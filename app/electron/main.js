@@ -500,3 +500,54 @@ ipcMain.handle("auto-mode:analyze-project", async (_, { projectPath }) => {
     return { success: false, error: error.message };
   }
 });
+
+/**
+ * Stop a specific feature
+ */
+ipcMain.handle("auto-mode:stop-feature", async (_, { featureId }) => {
+  console.log("[IPC] auto-mode:stop-feature called with:", { featureId });
+  try {
+    return await autoModeService.stopFeature({ featureId });
+  } catch (error) {
+    console.error("[IPC] auto-mode:stop-feature error:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Follow-up on a feature with additional prompt
+ */
+ipcMain.handle("auto-mode:follow-up-feature", async (_, { projectPath, featureId, prompt, imagePaths }) => {
+  console.log("[IPC] auto-mode:follow-up-feature called with:", { projectPath, featureId, prompt, imagePaths });
+  try {
+    const sendToRenderer = (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("auto-mode:event", data);
+      }
+    };
+
+    return await autoModeService.followUpFeature({ projectPath, featureId, prompt, imagePaths, sendToRenderer });
+  } catch (error) {
+    console.error("[IPC] auto-mode:follow-up-feature error:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Commit changes for a feature (no further work, just commit)
+ */
+ipcMain.handle("auto-mode:commit-feature", async (_, { projectPath, featureId }) => {
+  console.log("[IPC] auto-mode:commit-feature called with:", { projectPath, featureId });
+  try {
+    const sendToRenderer = (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("auto-mode:event", data);
+      }
+    };
+
+    return await autoModeService.commitFeature({ projectPath, featureId, sendToRenderer });
+  } catch (error) {
+    console.error("[IPC] auto-mode:commit-feature error:", error);
+    return { success: false, error: error.message };
+  }
+});

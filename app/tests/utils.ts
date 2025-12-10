@@ -2122,3 +2122,219 @@ export async function setupMockProjectWithAgentOutput(
     { featureId, outputContent }
   );
 }
+
+// ============ Waiting Approval Feature Utilities ============
+
+/**
+ * Get the follow-up button for a waiting_approval feature
+ */
+export async function getFollowUpButton(
+  page: Page,
+  featureId: string
+): Promise<Locator> {
+  return page.locator(`[data-testid="follow-up-${featureId}"]`);
+}
+
+/**
+ * Click the follow-up button for a waiting_approval feature
+ */
+export async function clickFollowUpButton(
+  page: Page,
+  featureId: string
+): Promise<void> {
+  const button = page.locator(`[data-testid="follow-up-${featureId}"]`);
+  await button.click();
+}
+
+/**
+ * Check if the follow-up button is visible for a feature
+ */
+export async function isFollowUpButtonVisible(
+  page: Page,
+  featureId: string
+): Promise<boolean> {
+  const button = page.locator(`[data-testid="follow-up-${featureId}"]`);
+  return await button.isVisible().catch(() => false);
+}
+
+/**
+ * Get the commit button for a waiting_approval feature
+ */
+export async function getCommitButton(
+  page: Page,
+  featureId: string
+): Promise<Locator> {
+  return page.locator(`[data-testid="commit-${featureId}"]`);
+}
+
+/**
+ * Click the commit button for a waiting_approval feature
+ */
+export async function clickCommitButton(
+  page: Page,
+  featureId: string
+): Promise<void> {
+  const button = page.locator(`[data-testid="commit-${featureId}"]`);
+  await button.click();
+}
+
+/**
+ * Check if the commit button is visible for a feature
+ */
+export async function isCommitButtonVisible(
+  page: Page,
+  featureId: string
+): Promise<boolean> {
+  const button = page.locator(`[data-testid="commit-${featureId}"]`);
+  return await button.isVisible().catch(() => false);
+}
+
+/**
+ * Check if the follow-up dialog is visible
+ */
+export async function isFollowUpDialogVisible(page: Page): Promise<boolean> {
+  const dialog = page.locator('[data-testid="follow-up-dialog"]');
+  return await dialog.isVisible().catch(() => false);
+}
+
+/**
+ * Wait for the follow-up dialog to be visible
+ */
+export async function waitForFollowUpDialog(
+  page: Page,
+  options?: { timeout?: number }
+): Promise<Locator> {
+  return await waitForElement(page, "follow-up-dialog", options);
+}
+
+/**
+ * Wait for the follow-up dialog to be hidden
+ */
+export async function waitForFollowUpDialogHidden(
+  page: Page,
+  options?: { timeout?: number }
+): Promise<void> {
+  await waitForElementHidden(page, "follow-up-dialog", options);
+}
+
+/**
+ * Click the confirm follow-up button in the follow-up dialog
+ */
+export async function clickConfirmFollowUp(page: Page): Promise<void> {
+  await clickElement(page, "confirm-follow-up");
+}
+
+/**
+ * Get the waiting_approval kanban column
+ */
+export async function getWaitingApprovalColumn(page: Page): Promise<Locator> {
+  return page.locator('[data-testid="kanban-column-waiting_approval"]');
+}
+
+/**
+ * Check if the waiting_approval column is visible
+ */
+export async function isWaitingApprovalColumnVisible(page: Page): Promise<boolean> {
+  const column = page.locator('[data-testid="kanban-column-waiting_approval"]');
+  return await column.isVisible().catch(() => false);
+}
+
+/**
+ * Get the agent output modal description element
+ */
+export async function getAgentOutputModalDescriptionElement(page: Page): Promise<Locator> {
+  return page.locator('[data-testid="agent-output-description"]');
+}
+
+/**
+ * Check if the agent output modal description is scrollable
+ */
+export async function isAgentOutputDescriptionScrollable(page: Page): Promise<boolean> {
+  const description = page.locator('[data-testid="agent-output-description"]');
+  const scrollInfo = await description.evaluate((el) => {
+    return {
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      isScrollable: el.scrollHeight > el.clientHeight,
+    };
+  });
+  return scrollInfo.isScrollable;
+}
+
+/**
+ * Get scroll dimensions of the agent output modal description
+ */
+export async function getAgentOutputDescriptionScrollDimensions(page: Page): Promise<{
+  scrollHeight: number;
+  clientHeight: number;
+  maxHeight: string;
+  overflowY: string;
+}> {
+  const description = page.locator('[data-testid="agent-output-description"]');
+  return await description.evaluate((el) => {
+    const style = window.getComputedStyle(el);
+    return {
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      maxHeight: style.maxHeight,
+      overflowY: style.overflowY,
+    };
+  });
+}
+
+/**
+ * Set up a mock project with features that include waiting_approval status
+ */
+export async function setupMockProjectWithWaitingApprovalFeatures(
+  page: Page,
+  options?: {
+    maxConcurrency?: number;
+    runningTasks?: string[];
+    features?: Array<{
+      id: string;
+      category: string;
+      description: string;
+      status: "backlog" | "in_progress" | "waiting_approval" | "verified";
+      steps?: string[];
+      startedAt?: string;
+      skipTests?: boolean;
+    }>;
+  }
+): Promise<void> {
+  await page.addInitScript(
+    (opts: typeof options) => {
+      const mockProject = {
+        id: "test-project-1",
+        name: "Test Project",
+        path: "/mock/test-project",
+        lastOpened: new Date().toISOString(),
+      };
+
+      const mockFeatures = opts?.features || [];
+
+      const mockState = {
+        state: {
+          projects: [mockProject],
+          currentProject: mockProject,
+          theme: "dark",
+          sidebarOpen: true,
+          apiKeys: { anthropic: "", google: "" },
+          chatSessions: [],
+          chatHistoryOpen: false,
+          maxConcurrency: opts?.maxConcurrency ?? 3,
+          isAutoModeRunning: false,
+          runningAutoTasks: opts?.runningTasks ?? [],
+          autoModeActivityLog: [],
+          features: mockFeatures,
+        },
+        version: 0,
+      };
+
+      localStorage.setItem("automaker-storage", JSON.stringify(mockState));
+
+      // Also store features in a global variable that the mock electron API can use
+      (window as any).__mockFeatures = mockFeatures;
+    },
+    options
+  );
+}

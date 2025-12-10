@@ -115,6 +115,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     analyzeProject: (projectPath) =>
       ipcRenderer.invoke("auto-mode:analyze-project", { projectPath }),
 
+    // Stop a specific feature
+    stopFeature: (featureId) =>
+      ipcRenderer.invoke("auto-mode:stop-feature", { featureId }),
+
+    // Follow-up on a feature with additional prompt
+    followUpFeature: (projectPath, featureId, prompt, imagePaths) =>
+      ipcRenderer.invoke("auto-mode:follow-up-feature", { projectPath, featureId, prompt, imagePaths }),
+
+    // Commit changes for a feature
+    commitFeature: (projectPath, featureId) =>
+      ipcRenderer.invoke("auto-mode:commit-feature", { projectPath, featureId }),
+
     // Listen for auto mode events
     onEvent: (callback) => {
       const subscription = (_, data) => callback(data);

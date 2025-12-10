@@ -205,7 +205,7 @@ export function AgentOutputModal({
         className="max-w-4xl max-h-[80vh] flex flex-col"
         data-testid="agent-output-modal"
       >
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />
@@ -238,7 +238,10 @@ export function AgentOutputModal({
               </button>
             </div>
           </div>
-          <DialogDescription className="mt-1">
+          <DialogDescription
+            className="mt-1 max-h-24 overflow-y-auto break-words"
+            data-testid="agent-output-description"
+          >
             {featureDescription}
           </DialogDescription>
         </DialogHeader>
@@ -266,7 +269,7 @@ export function AgentOutputModal({
           )}
         </div>
 
-        <div className="text-xs text-muted-foreground text-center">
+        <div className="text-xs text-muted-foreground text-center flex-shrink-0">
           {autoScrollRef.current
             ? "Auto-scrolling enabled"
             : "Scroll to bottom to enable auto-scroll"}

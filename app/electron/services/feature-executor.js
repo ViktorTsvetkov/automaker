@@ -182,10 +182,12 @@ class FeatureExecutor {
         content: checkingMsg,
       });
 
-      // Re-load features to check if it was marked as verified
+      // Re-load features to check if it was marked as verified or waiting_approval (for skipTests)
       const updatedFeatures = await featureLoader.loadFeatures(projectPath);
       const updatedFeature = updatedFeatures.find((f) => f.id === feature.id);
-      const passes = updatedFeature?.status === "verified";
+      // For skipTests features, waiting_approval is also considered a success
+      const passes = updatedFeature?.status === "verified" || 
+                     (updatedFeature?.skipTests && updatedFeature?.status === "waiting_approval");
 
       // Send verification result
       const resultMsg = passes
@@ -312,10 +314,12 @@ class FeatureExecutor {
       execution.query = null;
       execution.abortController = null;
 
-      // Check if feature was marked as verified
+      // Check if feature was marked as verified or waiting_approval (for skipTests)
       const updatedFeatures = await featureLoader.loadFeatures(projectPath);
       const updatedFeature = updatedFeatures.find((f) => f.id === feature.id);
-      const passes = updatedFeature?.status === "verified";
+      // For skipTests features, waiting_approval is also considered a success
+      const passes = updatedFeature?.status === "verified" || 
+                     (updatedFeature?.skipTests && updatedFeature?.status === "waiting_approval");
 
       const finalMsg = passes
         ? "✓ Feature successfully verified and completed\n"
@@ -347,6 +351,171 @@ class FeatureExecutor {
       }
 
       console.error("[FeatureExecutor] Error resuming feature:", error);
+      if (execution) {
+        execution.abortController = null;
+        execution.query = null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Commit changes for a feature without doing additional work
+   * Analyzes changes and creates a proper conventional commit message
+   */
+  async commitChangesOnly(feature, projectPath, sendToRenderer, execution) {
+    console.log(`[FeatureExecutor] Committing changes for: ${feature.description}`);
+
+    try {
+      const commitMessage = `\n📝 Committing changes for: ${feature.description}\n`;
+      await contextManager.writeToContextFile(projectPath, feature.id, commitMessage);
+
+      sendToRenderer({
+        type: "auto_mode_progress",
+        featureId: feature.id,
+        content: "Analyzing changes and creating commit...",
+      });
+
+      const abortController = new AbortController();
+      execution.abortController = abortController;
+
+      // Create custom MCP server with UpdateFeatureStatus tool
+      const featureToolsServer = mcpServerFactory.createFeatureToolsServer(
+        featureLoader.updateFeatureStatus.bind(featureLoader),
+        projectPath
+      );
+
+      const options = {
+        model: "claude-sonnet-4-20250514", // Use sonnet for commit task
+        systemPrompt: `You are a git commit assistant that creates professional conventional commit messages.
+
+IMPORTANT RULES:
+- DO NOT modify any code
+- DO NOT write tests
+- DO NOT do anything except analyzing changes and committing them
+- Use the git command line tools via Bash
+- Create proper conventional commit messages based on what was actually changed`,
+        maxTurns: 15, // Allow some turns to analyze and commit
+        cwd: projectPath,
+        mcpServers: {
+          "automaker-tools": featureToolsServer
+        },
+        allowedTools: ["Bash", "mcp__automaker-tools__UpdateFeatureStatus"],
+        permissionMode: "acceptEdits",
+        sandbox: {
+          enabled: false, // Need to run git commands
+        },
+        abortController: abortController,
+      };
+
+      // Prompt that guides the agent to create a proper conventional commit
+      const prompt = `Please commit the current changes with a proper conventional commit message.
+
+**Feature Context:**
+Category: ${feature.category}
+Description: ${feature.description}
+
+**Your Task:**
+
+1. First, run \`git status\` to see all untracked and modified files
+2. Run \`git diff\` to see the actual changes (both staged and unstaged)
+3. Run \`git log --oneline -5\` to see recent commit message styles in this repo
+4. Analyze all the changes and draft a proper conventional commit message:
+   - Use conventional commit format: \`type(scope): description\`
+   - Types: feat, fix, refactor, style, docs, test, chore
+   - The description should be concise (under 72 chars) and focus on "what" was done
+   - Summarize the nature of the changes (new feature, enhancement, bug fix, etc.)
+   - Make sure the commit message accurately reflects the actual code changes
+5. Run \`git add .\` to stage all changes
+6. Create the commit with a message ending with:
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+
+Use a HEREDOC for the commit message to ensure proper formatting:
+\`\`\`bash
+git commit -m "$(cat <<'EOF'
+type(scope): Short description here
+
+Optional longer description if needed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+EOF
+)"
+\`\`\`
+
+**IMPORTANT:**
+- DO NOT use the feature description verbatim as the commit message
+- Analyze the actual code changes to determine the appropriate commit message
+- The commit message should be professional and follow conventional commit standards
+- DO NOT modify any code or run tests - ONLY commit the existing changes`;
+
+      const currentQuery = query({ prompt, options });
+      execution.query = currentQuery;
+
+      let responseText = "";
+      for await (const msg of currentQuery) {
+        if (!execution.isActive()) break;
+
+        if (msg.type === "assistant" && msg.message?.content) {
+          for (const block of msg.message.content) {
+            if (block.type === "text") {
+              responseText += block.text;
+
+              await contextManager.writeToContextFile(projectPath, feature.id, block.text);
+
+              sendToRenderer({
+                type: "auto_mode_progress",
+                featureId: feature.id,
+                content: block.text,
+              });
+            } else if (block.type === "tool_use") {
+              const toolMsg = `\n🔧 Tool: ${block.name}\n`;
+              await contextManager.writeToContextFile(projectPath, feature.id, toolMsg);
+
+              sendToRenderer({
+                type: "auto_mode_tool",
+                featureId: feature.id,
+                tool: block.name,
+                input: block.input,
+              });
+            }
+          }
+        }
+      }
+
+      execution.query = null;
+      execution.abortController = null;
+
+      const finalMsg = "✓ Changes committed successfully\n";
+      await contextManager.writeToContextFile(projectPath, feature.id, finalMsg);
+
+      sendToRenderer({
+        type: "auto_mode_progress",
+        featureId: feature.id,
+        content: finalMsg,
+      });
+
+      return {
+        passes: true,
+        message: responseText.substring(0, 500),
+      };
+    } catch (error) {
+      if (error instanceof AbortError || error?.name === "AbortError") {
+        console.log("[FeatureExecutor] Commit aborted");
+        if (execution) {
+          execution.abortController = null;
+          execution.query = null;
+        }
+        return {
+          passes: false,
+          message: "Commit aborted",
+        };
+      }
+
+      console.error("[FeatureExecutor] Error committing feature:", error);
       if (execution) {
         execution.abortController = null;
         execution.query = null;

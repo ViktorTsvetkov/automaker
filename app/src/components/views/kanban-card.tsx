@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Feature } from "@/store/app-store";
+import { Feature, useAppStore } from "@/store/app-store";
 import {
   GripVertical,
   Edit,
@@ -34,8 +34,23 @@ import {
   StopCircle,
   FlaskConical,
   ArrowLeft,
+  MessageSquare,
+  GitCommit,
+  Cpu,
+  Wrench,
+  ListTodo,
+  Sparkles,
+  Expand,
 } from "lucide-react";
 import { CountUpTimer } from "@/components/ui/count-up-timer";
+import { getElectronAPI } from "@/lib/electron";
+import {
+  parseAgentContext,
+  AgentTaskInfo,
+  formatModelName,
+  DEFAULT_MODEL,
+} from "@/lib/agent-context-parser";
+import { Markdown } from "@/components/ui/markdown";
 
 interface KanbanCardProps {
   feature: Feature;
@@ -47,9 +62,15 @@ interface KanbanCardProps {
   onForceStop?: () => void;
   onManualVerify?: () => void;
   onMoveBackToInProgress?: () => void;
+  onFollowUp?: () => void;
+  onCommit?: () => void;
   hasContext?: boolean;
   isCurrentAutoTask?: boolean;
   shortcutKey?: string;
+  /** Context content for extracting progress info */
+  contextContent?: string;
+  /** Feature summary from agent completion */
+  summary?: string;
 }
 
 export function KanbanCard({
@@ -62,11 +83,71 @@ export function KanbanCard({
   onForceStop,
   onManualVerify,
   onMoveBackToInProgress,
+  onFollowUp,
+  onCommit,
   hasContext,
   isCurrentAutoTask,
   shortcutKey,
+  contextContent,
+  summary,
 }: KanbanCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [agentInfo, setAgentInfo] = useState<AgentTaskInfo | null>(null);
+  const { kanbanCardDetailLevel } = useAppStore();
+
+  // Helper functions to check what should be shown based on detail level
+  const showSteps =
+    kanbanCardDetailLevel === "standard" ||
+    kanbanCardDetailLevel === "detailed";
+  const showAgentInfo = kanbanCardDetailLevel === "detailed";
+  const showProgressBar =
+    kanbanCardDetailLevel === "standard" ||
+    kanbanCardDetailLevel === "detailed";
+
+  // Load context file for in_progress, waiting_approval, and verified features
+  useEffect(() => {
+    const loadContext = async () => {
+      // Use provided context or load from file
+      if (contextContent) {
+        const info = parseAgentContext(contextContent);
+        setAgentInfo(info);
+        return;
+      }
+
+      // Only load for non-backlog features
+      if (feature.status === "backlog") {
+        setAgentInfo(null);
+        return;
+      }
+
+      try {
+        const api = getElectronAPI();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const currentProject = (window as any).__currentProject;
+        if (!currentProject?.path) return;
+
+        const contextPath = `${currentProject.path}/.automaker/agents-context/${feature.id}.md`;
+        const result = await api.readFile(contextPath);
+
+        if (result.success && result.content) {
+          const info = parseAgentContext(result.content);
+          setAgentInfo(info);
+        }
+      } catch {
+        // Context file might not exist
+        console.debug("[KanbanCard] No context file for feature:", feature.id);
+      }
+    };
+
+    loadContext();
+
+    // Reload context periodically while feature is running
+    if (isCurrentAutoTask) {
+      const interval = setInterval(loadContext, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [feature.id, feature.status, contextContent, isCurrentAutoTask]);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -189,8 +270,8 @@ export function KanbanCard({
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        {/* Steps Preview */}
-        {feature.steps.length > 0 && (
+        {/* Steps Preview - Show in Standard and Detailed modes */}
+        {showSteps && feature.steps.length > 0 && (
           <div className="mb-3 space-y-1">
             {feature.steps.slice(0, 3).map((step, index) => (
               <div
@@ -209,6 +290,195 @@ export function KanbanCard({
               <p className="text-xs text-muted-foreground pl-5">
                 +{feature.steps.length - 3} more steps
               </p>
+            )}
+          </div>
+        )}
+
+        {/* Agent Info Panel - shows for in_progress, waiting_approval, verified */}
+        {/* Standard mode: Only show progress bar */}
+        {showProgressBar &&
+          !showAgentInfo &&
+          feature.status !== "backlog" &&
+          agentInfo &&
+          (isCurrentAutoTask || feature.status === "in_progress") && (
+            <div className="mb-3 space-y-1">
+              <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="w-full h-full bg-primary transition-transform duration-500 ease-out origin-left"
+                  style={{
+                    transform: `translateX(${
+                      agentInfo.progressPercentage - 100
+                    }%)`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{Math.round(agentInfo.progressPercentage)}%</span>
+              </div>
+            </div>
+          )}
+
+        {/* Detailed mode: Show all agent info */}
+        {showAgentInfo && feature.status !== "backlog" && agentInfo && (
+          <div className="mb-3 space-y-2">
+            {/* Model & Phase */}
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1 text-cyan-400">
+                <Cpu className="w-3 h-3" />
+                <span className="font-medium">
+                  {formatModelName(DEFAULT_MODEL)}
+                </span>
+              </div>
+              {agentInfo.currentPhase && (
+                <div
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[10px] font-medium",
+                    agentInfo.currentPhase === "planning" &&
+                      "bg-blue-500/20 text-blue-400",
+                    agentInfo.currentPhase === "action" &&
+                      "bg-amber-500/20 text-amber-400",
+                    agentInfo.currentPhase === "verification" &&
+                      "bg-green-500/20 text-green-400"
+                  )}
+                >
+                  {agentInfo.currentPhase}
+                </div>
+              )}
+            </div>
+
+            {/* Progress Indicator */}
+            {(isCurrentAutoTask || feature.status === "in_progress") && (
+              <div className="space-y-1">
+                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="w-full h-full bg-primary transition-transform duration-500 ease-out origin-left"
+                    style={{
+                      transform: `translateX(${
+                        agentInfo.progressPercentage - 100
+                      }%)`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <Wrench className="w-2.5 h-2.5" />
+                      {agentInfo.toolCallCount} tools
+                    </span>
+                    {agentInfo.lastToolUsed && (
+                      <span
+                        className="text-zinc-500 truncate max-w-[80px]"
+                        title={agentInfo.lastToolUsed}
+                      >
+                        {agentInfo.lastToolUsed}
+                      </span>
+                    )}
+                  </div>
+                  <span>{Math.round(agentInfo.progressPercentage)}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Task List Progress (if todos found) */}
+            {agentInfo.todos.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <ListTodo className="w-3 h-3" />
+                  <span>
+                    {
+                      agentInfo.todos.filter((t) => t.status === "completed")
+                        .length
+                    }
+                    /{agentInfo.todos.length} tasks
+                  </span>
+                </div>
+                <div className="space-y-0.5 max-h-16 overflow-y-auto">
+                  {agentInfo.todos.slice(0, 3).map((todo, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 text-[10px]"
+                    >
+                      {todo.status === "completed" ? (
+                        <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                      ) : todo.status === "in_progress" ? (
+                        <Loader2 className="w-2.5 h-2.5 text-amber-400 animate-spin shrink-0" />
+                      ) : (
+                        <Circle className="w-2.5 h-2.5 text-zinc-500 shrink-0" />
+                      )}
+                      <span
+                        className={cn(
+                          "truncate",
+                          todo.status === "completed" &&
+                            "text-zinc-500 line-through",
+                          todo.status === "in_progress" && "text-amber-400",
+                          todo.status === "pending" && "text-zinc-400"
+                        )}
+                      >
+                        {todo.content}
+                      </span>
+                    </div>
+                  ))}
+                  {agentInfo.todos.length > 3 && (
+                    <p className="text-[10px] text-muted-foreground pl-4">
+                      +{agentInfo.todos.length - 3} more
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Summary for waiting_approval and verified - prioritize feature.summary from UpdateFeatureStatus */}
+            {(feature.status === "waiting_approval" ||
+              feature.status === "verified") && (
+              <>
+                {(feature.summary || summary || agentInfo.summary) && (
+                  <div className="space-y-1 pt-1 border-t border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-[10px] text-green-400">
+                        <Sparkles className="w-3 h-3" />
+                        <span>Summary</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsSummaryDialogOpen(true);
+                        }}
+                        className="p-0.5 rounded hover:bg-white/10 transition-colors text-zinc-500 hover:text-zinc-300"
+                        title="View full summary"
+                        data-testid={`expand-summary-${feature.id}`}
+                      >
+                        <Expand className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 line-clamp-3">
+                      {feature.summary || summary || agentInfo.summary}
+                    </p>
+                  </div>
+                )}
+                {/* Show tool count even without summary */}
+                {!feature.summary &&
+                  !summary &&
+                  !agentInfo.summary &&
+                  agentInfo.toolCallCount > 0 && (
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-1 border-t border-white/5">
+                      <span className="flex items-center gap-1">
+                        <Wrench className="w-2.5 h-2.5" />
+                        {agentInfo.toolCallCount} tool calls
+                      </span>
+                      {agentInfo.todos.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
+                          {
+                            agentInfo.todos.filter(
+                              (t) => t.status === "completed"
+                            ).length
+                          }{" "}
+                          tasks done
+                        </span>
+                      )}
+                    </div>
+                  )}
+              </>
             )}
           </div>
         )}
@@ -363,6 +633,51 @@ export function KanbanCard({
               </Button>
             </>
           )}
+          {!isCurrentAutoTask && feature.status === "waiting_approval" && (
+            <>
+              {/* Follow-up prompt button */}
+              {onFollowUp && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFollowUp();
+                  }}
+                  data-testid={`follow-up-${feature.id}`}
+                >
+                  <MessageSquare className="w-3 h-3 mr-1" />
+                  Follow-up
+                </Button>
+              )}
+              {/* Commit and verify button */}
+              {onCommit && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCommit();
+                  }}
+                  data-testid={`commit-${feature.id}`}
+                >
+                  <GitCommit className="w-3 h-3 mr-1" />
+                  Commit
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={handleDeleteClick}
+                data-testid={`delete-waiting-feature-${feature.id}`}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </>
+          )}
           {!isCurrentAutoTask && feature.status === "backlog" && (
             <>
               <Button
@@ -416,6 +731,43 @@ export function KanbanCard({
               data-testid="confirm-delete-button"
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Modal */}
+      <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
+        <DialogContent
+          className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col"
+          data-testid={`summary-dialog-${feature.id}`}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-green-400" />
+              Implementation Summary
+            </DialogTitle>
+            <DialogDescription className="text-sm" title={feature.description}>
+              {feature.description.length > 100
+                ? `${feature.description.slice(0, 100)}...`
+                : feature.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-4 bg-zinc-900/50 rounded-lg border border-white/10">
+            <Markdown>
+              {feature.summary ||
+                summary ||
+                agentInfo?.summary ||
+                "No summary available"}
+            </Markdown>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setIsSummaryDialogOpen(false)}
+              data-testid="close-summary-button"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

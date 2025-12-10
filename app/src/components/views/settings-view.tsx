@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Settings,
   Key,
   Eye,
@@ -34,11 +27,22 @@ import {
   Cat,
   Atom,
   Radio,
+  LayoutGrid,
+  Minimize2,
+  Square,
+  Maximize2,
 } from "lucide-react";
 
 export function SettingsView() {
-  const { apiKeys, setApiKeys, setCurrentView, theme, setTheme } =
-    useAppStore();
+  const {
+    apiKeys,
+    setApiKeys,
+    setCurrentView,
+    theme,
+    setTheme,
+    kanbanCardDetailLevel,
+    setKanbanCardDetailLevel,
+  } = useAppStore();
   const [anthropicKey, setAnthropicKey] = useState(apiKeys.anthropic);
   const [googleKey, setGoogleKey] = useState(apiKeys.google);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
@@ -544,6 +548,81 @@ export function SettingsView() {
                     <span className="font-medium text-sm">Synthwave</span>
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Kanban Card Display Section */}
+          <div className="rounded-xl border border-white/10 bg-zinc-900/50 backdrop-blur-md overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <LayoutGrid className="w-5 h-5 text-brand-500" />
+                <h2 className="text-lg font-semibold text-white">
+                  Kanban Card Display
+                </h2>
+              </div>
+              <p className="text-sm text-zinc-400">
+                Control how much information is displayed on Kanban cards.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-3">
+                <Label className="text-zinc-300">Detail Level</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setKanbanCardDetailLevel("minimal")}
+                    className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-lg border transition-all ${
+                      kanbanCardDetailLevel === "minimal"
+                        ? "bg-white/5 border-brand-500 text-white"
+                        : "bg-zinc-950/50 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                    }`}
+                    data-testid="kanban-detail-minimal"
+                  >
+                    <Minimize2 className="w-5 h-5" />
+                    <span className="font-medium text-sm">Minimal</span>
+                    <span className="text-xs text-zinc-500 text-center">
+                      Title & category only
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setKanbanCardDetailLevel("standard")}
+                    className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-lg border transition-all ${
+                      kanbanCardDetailLevel === "standard"
+                        ? "bg-white/5 border-brand-500 text-white"
+                        : "bg-zinc-950/50 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                    }`}
+                    data-testid="kanban-detail-standard"
+                  >
+                    <Square className="w-5 h-5" />
+                    <span className="font-medium text-sm">Standard</span>
+                    <span className="text-xs text-zinc-500 text-center">
+                      Steps & progress
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setKanbanCardDetailLevel("detailed")}
+                    className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-lg border transition-all ${
+                      kanbanCardDetailLevel === "detailed"
+                        ? "bg-white/5 border-brand-500 text-white"
+                        : "bg-zinc-950/50 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                    }`}
+                    data-testid="kanban-detail-detailed"
+                  >
+                    <Maximize2 className="w-5 h-5" />
+                    <span className="font-medium text-sm">Detailed</span>
+                    <span className="text-xs text-zinc-500 text-center">
+                      Model, tools & tasks
+                    </span>
+                  </button>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  <strong>Minimal:</strong> Shows only title and category
+                  <br />
+                  <strong>Standard:</strong> Adds steps preview and progress bar
+                  <br />
+                  <strong>Detailed:</strong> Shows all info including model,
+                  tool calls, task list, and summaries
+                </p>
               </div>
             </div>
           </div>

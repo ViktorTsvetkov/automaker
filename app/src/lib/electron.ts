@@ -67,6 +67,8 @@ export interface AutoModeAPI {
   resumeFeature: (projectPath: string, featureId: string) => Promise<{ success: boolean; passes?: boolean; error?: string }>;
   contextExists: (projectPath: string, featureId: string) => Promise<{ success: boolean; exists?: boolean; error?: string }>;
   analyzeProject: (projectPath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  followUpFeature: (projectPath: string, featureId: string, prompt: string, imagePaths?: string[]) => Promise<{ success: boolean; passes?: boolean; error?: string }>;
+  commitFeature: (projectPath: string, featureId: string) => Promise<{ success: boolean; error?: string }>;
   onEvent: (callback: (event: AutoModeEvent) => void) => () => void;
 }
 
@@ -571,6 +573,58 @@ function createMockAutoModeAPI(): AutoModeAPI {
       mockAutoModeTimeouts.delete(analysisId);
 
       return { success: true, message: "Project analyzed successfully" };
+    },
+
+    followUpFeature: async (projectPath: string, featureId: string, prompt: string, imagePaths?: string[]) => {
+      if (mockRunningFeatures.has(featureId)) {
+        return { success: false, error: `Feature ${featureId} is already running` };
+      }
+
+      console.log("[Mock] Follow-up feature:", { featureId, prompt, imagePaths });
+
+      mockRunningFeatures.add(featureId);
+
+      // Simulate follow-up work (similar to run but with additional context)
+      // Note: We don't await this - it runs in the background like the real implementation
+      simulateAutoModeLoop(projectPath, featureId);
+
+      // Return immediately so the modal can close (matches real implementation)
+      return { success: true };
+    },
+
+    commitFeature: async (projectPath: string, featureId: string) => {
+      console.log("[Mock] Committing feature:", { projectPath, featureId });
+
+      // Simulate commit operation
+      emitAutoModeEvent({
+        type: "auto_mode_feature_start",
+        featureId,
+        feature: {
+          id: featureId,
+          category: "Commit",
+          description: "Committing changes",
+        },
+      });
+
+      await delay(300, featureId);
+
+      emitAutoModeEvent({
+        type: "auto_mode_phase",
+        featureId,
+        phase: "action",
+        message: "Committing changes to git...",
+      });
+
+      await delay(500, featureId);
+
+      emitAutoModeEvent({
+        type: "auto_mode_feature_complete",
+        featureId,
+        passes: true,
+        message: "Changes committed successfully",
+      });
+
+      return { success: true };
     },
 
     onEvent: (callback: (event: AutoModeEvent) => void) => {

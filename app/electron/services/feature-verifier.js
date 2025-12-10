@@ -101,10 +101,12 @@ class FeatureVerifier {
       execution.query = null;
       execution.abortController = null;
 
-      // Re-load features to check if it was marked as verified
+      // Re-load features to check if it was marked as verified or waiting_approval (for skipTests)
       const updatedFeatures = await featureLoader.loadFeatures(projectPath);
       const updatedFeature = updatedFeatures.find((f) => f.id === feature.id);
-      const passes = updatedFeature?.status === "verified";
+      // For skipTests features, waiting_approval is also considered a success
+      const passes = updatedFeature?.status === "verified" || 
+                     (updatedFeature?.skipTests && updatedFeature?.status === "waiting_approval");
 
       const finalMsg = passes
         ? "✓ Verification successful: All tests passed\n"

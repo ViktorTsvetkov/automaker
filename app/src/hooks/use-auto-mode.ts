@@ -113,7 +113,9 @@ export function useAutoMode() {
 
         case "auto_mode_phase":
           // Log phase transitions (Planning, Action, Verification)
-          console.log(`[AutoMode] Phase: ${event.phase} for ${event.featureId}`);
+          console.log(
+            `[AutoMode] Phase: ${event.phase} for ${event.featureId}`
+          );
           addAutoModeActivity({
             featureId: event.featureId,
             type: event.phase,
@@ -125,7 +127,13 @@ export function useAutoMode() {
     });
 
     return unsubscribe;
-  }, [addRunningTask, removeRunningTask, clearRunningTasks, setAutoModeRunning, addAutoModeActivity]);
+  }, [
+    addRunningTask,
+    removeRunningTask,
+    clearRunningTasks,
+    setAutoModeRunning,
+    addAutoModeActivity,
+  ]);
 
   // Start auto mode
   const start = useCallback(async () => {
@@ -181,33 +189,36 @@ export function useAutoMode() {
   }, [setAutoModeRunning, clearRunningTasks]);
 
   // Stop a specific feature
-  const stopFeature = useCallback(async (featureId: string) => {
-    try {
-      const api = getElectronAPI();
-      if (!api?.autoMode?.stopFeature) {
-        throw new Error("Stop feature API not available");
-      }
+  const stopFeature = useCallback(
+    async (featureId: string) => {
+      try {
+        const api = getElectronAPI();
+        if (!api?.autoMode?.stopFeature) {
+          throw new Error("Stop feature API not available");
+        }
 
-      const result = await api.autoMode.stopFeature(featureId);
+        const result = await api.autoMode.stopFeature(featureId);
 
-      if (result.success) {
-        removeRunningTask(featureId);
-        console.log("[AutoMode] Feature stopped successfully:", featureId);
-        addAutoModeActivity({
-          featureId,
-          type: "complete",
-          message: "Feature stopped by user",
-          passes: false,
-        });
-      } else {
-        console.error("[AutoMode] Failed to stop feature:", result.error);
-        throw new Error(result.error || "Failed to stop feature");
+        if (result.success) {
+          removeRunningTask(featureId);
+          console.log("[AutoMode] Feature stopped successfully:", featureId);
+          addAutoModeActivity({
+            featureId,
+            type: "complete",
+            message: "Feature stopped by user",
+            passes: false,
+          });
+        } else {
+          console.error("[AutoMode] Failed to stop feature:", result.error);
+          throw new Error(result.error || "Failed to stop feature");
+        }
+      } catch (error) {
+        console.error("[AutoMode] Error stopping feature:", error);
+        throw error;
       }
-    } catch (error) {
-      console.error("[AutoMode] Error stopping feature:", error);
-      throw error;
-    }
-  }, [removeRunningTask, addAutoModeActivity]);
+    },
+    [removeRunningTask, addAutoModeActivity]
+  );
 
   return {
     isRunning: isAutoModeRunning,

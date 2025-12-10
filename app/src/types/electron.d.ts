@@ -233,6 +233,17 @@ export interface AutoModeAPI {
     error?: string;
   }>;
 
+  followUpFeature: (projectPath: string, featureId: string, prompt: string, imagePaths?: string[]) => Promise<{
+    success: boolean;
+    passes?: boolean;
+    error?: string;
+  }>;
+
+  commitFeature: (projectPath: string, featureId: string) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
   onEvent: (callback: (event: AutoModeEvent) => void) => () => void;
 }
 

@@ -51,5 +51,25 @@
     "description": "So i want to improve the look of the view of agent output modal its just plain text and im thinking to parse it better and kinda make it look like the last image of coolify logs nice colorded and somehow grouped into some types of info / debug so in our case like prompt / tool call etc",
     "steps": [],
     "status": "verified"
+  },
+  {
+    "id": "feature-1765318148517-715isvwwb",
+    "category": "Kanban",
+    "description": "When agent finish work the cards is moved either to waiting approval or into verified one But mostly its include some type of summary at the end i want you to modify our prompts and ui so when its in both states we can see the feature summary of what was done / modified instead of relying on going to code editor to see what got changed etc.",
+    "steps": [],
+    "status": "verified",
+    "startedAt": "2025-12-09T22:09:13.684Z",
+    "imagePaths": [],
+    "skipTests": true
+  },
+  {
+    "id": "feature-1765319491258-x933j6kbq",
+    "category": "Core",
+    "description": "When running new feature in skip automated testing once its got finished its moved to waiting approval for us to manual test it / follow up prompt. Once we are satisfied we can click commit button so ai agent can commit it work this is only hapening in this scenerio because if we have unchecked the skip automated testing its do it automaticly and commit already. But the issue is when its going to commit we move it to in progress state where we can use stop button and if user use that button its moved to backlog column and. that kinda break what we are doing becase we have no longer even abbility to move it back to waiting approval or to run commit button / follow up again so if user use manual one and stop the commit i want it to be again moved back to waiting approval state / column",
+    "steps": [],
+    "status": "verified",
+    "startedAt": "2025-12-09T22:31:41.946Z",
+    "imagePaths": [],
+    "skipTests": true
   }
 ]
