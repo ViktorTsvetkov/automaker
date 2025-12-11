@@ -391,8 +391,7 @@ class AutoModeService {
           featureId,
           "waiting_approval",
           projectPath,
-          null, // no summary
-          error.message // pass error message
+          { error: error.message }
         );
       } catch (statusError) {
         console.error("[AutoMode] Failed to update feature status after error:", statusError);
@@ -495,8 +494,7 @@ class AutoModeService {
           featureId,
           "waiting_approval",
           projectPath,
-          null, // no summary
-          error.message // pass error message
+          { error: error.message }
         );
       } catch (statusError) {
         console.error("[AutoMode] Failed to update feature status after error:", statusError);
@@ -662,8 +660,7 @@ class AutoModeService {
           featureId,
           "waiting_approval",
           projectPath,
-          null, // no summary
-          error.message // pass error message
+          { error: error.message }
         );
       } catch (statusError) {
         console.error("[AutoMode] Failed to update feature status after error:", statusError);
@@ -859,8 +856,7 @@ class AutoModeService {
           featureId,
           "waiting_approval",
           projectPath,
-          null, // no summary
-          error.message // pass error message
+          { error: error.message }
         );
       } catch (statusError) {
         console.error("[AutoMode] Failed to update feature status after error:", statusError);
@@ -1102,8 +1098,7 @@ class AutoModeService {
           featureId,
           "waiting_approval",
           projectPath,
-          null, // no summary
-          error.message // pass error message
+          { error: error.message }
         );
       } catch (statusError) {
         console.error("[AutoMode] Failed to update feature status after error:", statusError);

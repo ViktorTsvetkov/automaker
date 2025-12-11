@@ -270,6 +270,7 @@ export interface SpecRegenerationAPI {
   status: () => Promise<{
     success: boolean;
     isRunning?: boolean;
+    currentPhase?: string;
     error?: string;
   }>;
 

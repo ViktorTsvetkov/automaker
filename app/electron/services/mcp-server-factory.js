@@ -53,16 +53,17 @@ class McpServerFactory {
                 finalStatus = "waiting_approval";
               }
 
-              // Call the provided callback to update feature status with all parameters
+              // Call the provided callback to update feature status
               await updateFeatureStatusCallback(
                 args.featureId, 
                 finalStatus, 
                 projectPath, 
-                args.summary,
-                undefined, // error
-                args.description,
-                args.category,
-                args.steps
+                {
+                  summary: args.summary,
+                  description: args.description,
+                  category: args.category,
+                  steps: args.steps,
+                }
               );
 
               const statusMessage = finalStatus !== args.status

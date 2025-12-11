@@ -86,6 +86,15 @@ const APP_SPEC_XML_TEMPLATE = `<project_specification>
 class SpecRegenerationService {
   constructor() {
     this.runningRegeneration = null;
+    this.currentPhase = ""; // Tracks current phase for status queries
+  }
+
+  /**
+   * Get the current phase of the regeneration process
+   * @returns {string} Current phase or empty string if not running
+   */
+  getCurrentPhase() {
+    return this.currentPhase;
   }
 
   /**
@@ -107,14 +116,14 @@ class SpecRegenerationService {
       const abortController = new AbortController();
       execution.abortController = abortController;
 
-      // Phase tracking
-      let currentPhase = "initialization";
+      // Phase tracking - use instance property for status queries
+      this.currentPhase = "initialization";
       
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Initializing spec generation process...\n`,
+        content: `[Phase: ${this.currentPhase}] Initializing spec generation process...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase}`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase}`);
 
       // Create custom MCP server with UpdateFeatureStatus tool if generating features
       if (generateFeatures) {
@@ -135,12 +144,12 @@ class SpecRegenerationService {
         }
       }
 
-      currentPhase = "setup";
+      this.currentPhase = "setup";
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Configuring AI agent and tools...\n`,
+        content: `[Phase: ${this.currentPhase}] Configuring AI agent and tools...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase}`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase}`);
 
       // Phase 1: Generate spec WITHOUT UpdateFeatureStatus tool
       // This prevents features from being created before the spec is complete
@@ -160,17 +169,17 @@ class SpecRegenerationService {
 
       const prompt = this.buildInitialCreationPrompt(projectOverview); // No feature generation during spec creation
 
-      currentPhase = "analysis";
+      this.currentPhase = "analysis";
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Starting project analysis and spec creation...\n`,
+        content: `[Phase: ${this.currentPhase}] Starting project analysis and spec creation...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase} - Starting AI agent query`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase} - Starting AI agent query`);
       
       if (generateFeatures) {
         sendToRenderer({
           type: "spec_regeneration_progress",
-          content: `[Phase: ${currentPhase}] Feature generation is enabled - features will be created after spec is complete.\n`,
+          content: `[Phase: ${this.currentPhase}] Feature generation is enabled - features will be created after spec is complete.\n`,
         });
         console.log("[SpecRegeneration] Feature generation enabled - will create features after spec");
       }
@@ -253,11 +262,11 @@ class SpecRegenerationService {
       execution.abortController = null;
 
       const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      currentPhase = "spec_complete";
-      console.log(`[SpecRegeneration] Phase: ${currentPhase} - Spec creation completed in ${elapsedTime}s`);
+      this.currentPhase = "spec_complete";
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase} - Spec creation completed in ${elapsedTime}s`);
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `\n[Phase: ${currentPhase}] ✓ App specification created successfully! (${elapsedTime}s)\n`,
+        content: `\n[Phase: ${this.currentPhase}] ✓ App specification created successfully! (${elapsedTime}s)\n`,
       });
       
       if (generateFeatures) {
@@ -282,10 +291,10 @@ class SpecRegenerationService {
           });
         }
       } else {
-        currentPhase = "complete";
+        this.currentPhase = "complete";
         sendToRenderer({
           type: "spec_regeneration_progress",
-          content: `[Phase: ${currentPhase}] All tasks completed!\n`,
+          content: `[Phase: ${this.currentPhase}] All tasks completed!\n`,
         });
         
         // Send final completion event
@@ -344,16 +353,16 @@ class SpecRegenerationService {
    */
   async generateFeaturesFromSpec(projectPath, sendToRenderer, execution, startTime) {
     const featureStartTime = Date.now();
-    let currentPhase = "feature_generation";
+    this.currentPhase = "feature_generation";
     
     console.log(`[SpecRegeneration] ===== Starting Phase 2: Feature Generation =====`);
     console.log(`[SpecRegeneration] Project path: ${projectPath}`);
     
     sendToRenderer({
       type: "spec_regeneration_progress",
-      content: `\n[Phase: ${currentPhase}] Starting feature creation from implementation roadmap...\n`,
+      content: `\n[Phase: ${this.currentPhase}] Starting feature creation from implementation roadmap...\n`,
     });
-    console.log(`[SpecRegeneration] Phase: ${currentPhase} - Starting feature generation query`);
+    console.log(`[SpecRegeneration] Phase: ${this.currentPhase} - Starting feature generation query`);
     
     try {
       // Create feature tools server
@@ -492,12 +501,12 @@ Use the UpdateFeatureStatus tool to create features with ALL the fields above.`,
       execution.query = null;
       execution.abortController = null;
       
-      currentPhase = "complete";
+      this.currentPhase = "complete";
       const featureElapsedTime = ((Date.now() - featureStartTime) / 1000).toFixed(1);
       const totalElapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `\n[Phase: ${currentPhase}] ✓ All tasks completed! (${totalElapsedTime}s total, ${featureElapsedTime}s for features)\n`,
+        content: `\n[Phase: ${this.currentPhase}] ✓ All tasks completed! (${totalElapsedTime}s total, ${featureElapsedTime}s for features)\n`,
       });
       sendToRenderer({
         type: "spec_regeneration_complete",
@@ -653,22 +662,22 @@ Begin by exploring the project structure.`;
     console.log(`[SpecRegeneration] Project definition length: ${projectDefinition.length} characters`);
 
     try {
-      let currentPhase = "initialization";
+      this.currentPhase = "initialization";
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Initializing spec regeneration process...\n`,
+        content: `[Phase: ${this.currentPhase}] Initializing spec regeneration process...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase}`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase}`);
 
       const abortController = new AbortController();
       execution.abortController = abortController;
 
-      currentPhase = "setup";
+      this.currentPhase = "setup";
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Configuring AI agent and tools...\n`,
+        content: `[Phase: ${this.currentPhase}] Configuring AI agent and tools...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase}`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase}`);
 
       const options = {
         model: "claude-sonnet-4-20250514",
@@ -686,12 +695,12 @@ Begin by exploring the project structure.`;
 
       const prompt = this.buildRegenerationPrompt(projectDefinition);
 
-      currentPhase = "regeneration";
+      this.currentPhase = "regeneration";
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `[Phase: ${currentPhase}] Starting spec regeneration...\n`,
+        content: `[Phase: ${this.currentPhase}] Starting spec regeneration...\n`,
       });
-      console.log(`[SpecRegeneration] Phase: ${currentPhase} - Starting AI agent query`);
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase} - Starting AI agent query`);
 
       const currentQuery = query({ prompt, options });
       execution.query = currentQuery;
@@ -725,21 +734,10 @@ Begin by exploring the project structure.`;
                 console.log(`[SpecRegeneration] Tool call #${toolCallCount}: ${toolName}`);
                 console.log(`[SpecRegeneration] Tool input: ${JSON.stringify(toolInput).substring(0, 200)}...`);
                 
-                // Special handling for UpdateFeatureStatus to show feature creation
-                if (toolName === "mcp__automaker-tools__UpdateFeatureStatus" || toolName === "UpdateFeatureStatus") {
-                  const featureId = toolInput?.featureId || "unknown";
-                  const status = toolInput?.status || "unknown";
-                  const summary = toolInput?.summary || "";
-                  sendToRenderer({
-                    type: "spec_regeneration_progress",
-                    content: `\n[Feature Creation] Creating feature "${featureId}" with status "${status}"${summary ? `\n  Summary: ${summary}` : ""}\n`,
-                  });
-                } else {
-                  sendToRenderer({
-                    type: "spec_regeneration_progress",
-                    content: `\n[Tool] Using ${toolName}...\n`,
-                  });
-                }
+                sendToRenderer({
+                  type: "spec_regeneration_progress",
+                  content: `\n[Tool] Using ${toolName}...\n`,
+                });
                 
                 sendToRenderer({
                   type: "spec_regeneration_tool",
@@ -755,18 +753,10 @@ Begin by exploring the project structure.`;
             const resultPreview = result.substring(0, 200).replace(/\n/g, " ");
             console.log(`[SpecRegeneration] Tool result (${toolName}): ${resultPreview}...`);
             
-            // Special handling for UpdateFeatureStatus results
-            if (toolName === "mcp__automaker-tools__UpdateFeatureStatus" || toolName === "UpdateFeatureStatus") {
-              sendToRenderer({
-                type: "spec_regeneration_progress",
-                content: `[Feature Creation] ${result}\n`,
-              });
-            } else {
-              sendToRenderer({
-                type: "spec_regeneration_progress",
-                content: `[Tool Result] ${toolName} completed successfully\n`,
-              });
-            }
+            sendToRenderer({
+              type: "spec_regeneration_progress",
+              content: `[Tool Result] ${toolName} completed successfully\n`,
+            });
           } else if (msg.type === "error") {
             const errorMsg = msg.error?.message || JSON.stringify(msg.error);
             console.error(`[SpecRegeneration] ERROR in query stream: ${errorMsg}`);
@@ -791,11 +781,11 @@ Begin by exploring the project structure.`;
       execution.abortController = null;
 
       const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      currentPhase = "complete";
-      console.log(`[SpecRegeneration] Phase: ${currentPhase} - Spec regeneration completed in ${elapsedTime}s`);
+      this.currentPhase = "complete";
+      console.log(`[SpecRegeneration] Phase: ${this.currentPhase} - Spec regeneration completed in ${elapsedTime}s`);
       sendToRenderer({
         type: "spec_regeneration_progress",
-        content: `\n[Phase: ${currentPhase}] ✓ Spec regeneration complete! (${elapsedTime}s)\n`,
+        content: `\n[Phase: ${this.currentPhase}] ✓ Spec regeneration complete! (${elapsedTime}s)\n`,
       });
 
       sendToRenderer({
@@ -867,9 +857,8 @@ When analyzing, look at:
 - Database configurations and schemas
 - API structures and patterns
 
-**Feature Storage:**
-Features are stored in .automaker/features/{id}/feature.json - each feature has its own folder.
-Do NOT manually create feature files. Use the UpdateFeatureStatus tool to manage features.
+**Note:** Feature files are stored separately in .automaker/features/{id}/feature.json.
+Your task is ONLY to update the app_spec.txt file - feature files will be managed separately.
 
 You CAN and SHOULD modify:
 - .automaker/app_spec.txt (this is your primary target)
@@ -1042,6 +1031,7 @@ Begin by exploring the project structure.`;
       this.runningRegeneration.abortController.abort();
     }
     this.runningRegeneration = null;
+    this.currentPhase = "";
   }
 }
 

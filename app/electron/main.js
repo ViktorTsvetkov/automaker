@@ -898,7 +898,7 @@ ipcMain.handle(
         featureId,
         status,
         projectPath,
-        summary
+        { summary }
       );
 
       // Notify renderer if window is available
@@ -1170,6 +1170,7 @@ ipcMain.handle("spec-regeneration:status", () => {
     isRunning:
       specRegenerationExecution !== null &&
       specRegenerationExecution.isActive(),
+    currentPhase: specRegenerationService.getCurrentPhase(),
   };
 });
 

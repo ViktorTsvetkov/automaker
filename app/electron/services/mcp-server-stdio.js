@@ -215,7 +215,7 @@ async function handleToolsCall(params, id) {
     // Call the update callback via IPC or direct call
     // Since we're in a separate process, we need to use IPC to communicate back
     // For now, we'll call the feature loader directly since it has the update method
-    await featureLoader.updateFeatureStatus(featureId, finalStatus, projectPath, summary);
+    await featureLoader.updateFeatureStatus(featureId, finalStatus, projectPath, { summary });
     
     const statusMessage = finalStatus !== status
       ? `Successfully updated feature ${featureId} to status "${finalStatus}" (converted from "${status}" because skipTests=true)${summary ? ` with summary: "${summary}"` : ''}`

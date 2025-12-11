@@ -105,93 +105,38 @@ export function SpecView() {
         console.log("[SpecView] Status check on mount:", status);
 
         if (status.success && status.isRunning) {
-          // Something is running - restore state
-          console.log("[SpecView] Spec generation is running - restoring state");
+          // Something is running - restore state using backend's authoritative phase
+          console.log("[SpecView] Spec generation is running - restoring state", { phase: status.currentPhase });
           
-          // Only restore state if we haven't already done so for this project
-          // This prevents resetting state when switching tabs
           if (!stateRestoredRef.current) {
             setIsCreating(true);
             setIsRegenerating(true);
             stateRestoredRef.current = true;
           }
           
-          // Try to extract the current phase from existing logs
-          let detectedPhase = "";
-          if (logsRef.current) {
-            // Look for the most recent phase in the logs
-            const phaseMatches = logsRef.current.matchAll(/\[Phase:\s*([^\]]+)\]/g);
-            const phases = Array.from(phaseMatches);
-            if (phases.length > 0) {
-              // Get the last phase mentioned in the logs
-              detectedPhase = phases[phases.length - 1][1];
-              console.log(`[SpecView] Detected phase from logs: ${detectedPhase}`);
-            }
-            
-            // Also check for feature generation indicators in logs
-            const hasFeatureGeneration = logsRef.current.includes("Feature Generation") ||
-                                       logsRef.current.includes("Feature Creation") ||
-                                       logsRef.current.includes("Creating feature") ||
-                                       logsRef.current.includes("feature_generation");
-            
-            if (hasFeatureGeneration && !detectedPhase) {
-              detectedPhase = "feature_generation";
-              console.log("[SpecView] Detected feature generation from logs");
-            }
-          }
-          
-          // Update phase from logs if we found one and don't have a specific phase set
-          // This allows the phase to update as new events come in
-          if (detectedPhase) {
-            setCurrentPhase((prevPhase) => {
-              // Only update if we don't have a phase or if the detected phase is more recent
-              if (!prevPhase || prevPhase === "unknown" || prevPhase === "in progress") {
-                return detectedPhase;
-              }
-              return prevPhase;
-            });
-          } else if (!currentPhase) {
-            // Use a more descriptive default instead of "unknown"
+          // Use the backend's currentPhase directly - single source of truth
+          if (status.currentPhase) {
+            setCurrentPhase(status.currentPhase);
+          } else {
             setCurrentPhase("in progress");
           }
           
-          // Don't clear logs - they may have been persisted
+          // Add resume message to logs if needed
           if (!logsRef.current) {
             const resumeMessage = "[Status] Resumed monitoring existing spec generation process...\n";
             logsRef.current = resumeMessage;
             setLogs(resumeMessage);
           } else if (!logsRef.current.includes("Resumed monitoring")) {
-            // Add a resume message to existing logs only if not already present
             const resumeMessage = "\n[Status] Resumed monitoring existing spec generation process...\n";
             logsRef.current = logsRef.current + resumeMessage;
             setLogs(logsRef.current);
           }
         } else if (status.success && !status.isRunning) {
-          // Check if we might still be in feature generation phase based on logs
-          const mightBeGeneratingFeatures = logsRef.current && (
-            logsRef.current.includes("Feature Generation") ||
-            logsRef.current.includes("Feature Creation") ||
-            logsRef.current.includes("Creating feature") ||
-            logsRef.current.includes("feature_generation") ||
-            currentPhase === "feature_generation"
-          );
-          
-          if (mightBeGeneratingFeatures && specExists) {
-            // Spec exists and we might still be generating features - keep state active
-            console.log("[SpecView] Detected potential feature generation - keeping state active");
-            if (!isCreating && !isRegenerating) {
-              setIsCreating(true);
-            }
-            if (currentPhase !== "feature_generation") {
-              setCurrentPhase("feature_generation");
-            }
-          } else {
-            // Not running - clear running state
-            setIsCreating(false);
-            setIsRegenerating(false);
-            setCurrentPhase("");
-            stateRestoredRef.current = false;
-          }
+          // Not running - clear all state
+          setIsCreating(false);
+          setIsRegenerating(false);
+          setCurrentPhase("");
+          stateRestoredRef.current = false;
         }
       } catch (error) {
         console.error("[SpecView] Failed to check status:", error);
@@ -209,7 +154,7 @@ export function SpecView() {
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden && currentProject && (isCreating || isRegenerating || isGeneratingFeatures)) {
-        // Tab became visible and we think we're still generating - verify status
+        // Tab became visible and we think we're still generating - verify status from backend
         try {
           const api = getElectronAPI();
           if (!api.specRegeneration) return;
@@ -218,45 +163,17 @@ export function SpecView() {
           console.log("[SpecView] Visibility change - status check:", status);
           
           if (!status.isRunning) {
-            // Not running but we think we are - check if we're truly done
-            // Look for recent activity in logs (within last 30 seconds worth of content)
-            const recentLogs = logsRef.current.slice(-5000); // Last ~5000 chars
-            const hasRecentFeatureActivity = recentLogs.includes("Feature Creation") ||
-                                            recentLogs.includes("Creating feature") ||
-                                            recentLogs.match(/\[Feature Creation\].*$/m);
-            
-            // Check if we have a completion message or complete phase
-            const hasCompletion = logsRef.current.includes("All tasks completed") ||
-                                 logsRef.current.includes("[Complete] All tasks completed") ||
-                                 logsRef.current.includes("[Phase: complete]");
-            
-            if (hasCompletion || (!hasRecentFeatureActivity && currentPhase !== "feature_generation")) {
-              // No recent activity and not running - we're done
-              console.log("[SpecView] Visibility change: Generation appears complete - clearing state");
-              setIsCreating(false);
-              setIsRegenerating(false);
-              setIsGeneratingFeatures(false);
-              setCurrentPhase("");
-              stateRestoredRef.current = false;
-              loadSpec();
-            } else if (currentPhase === "feature_generation" && !hasRecentFeatureActivity) {
-              // We were in feature generation but no recent activity - might be done
-              // Wait a moment and check again
-              setTimeout(async () => {
-                if (api.specRegeneration) {
-                  const recheckStatus = await api.specRegeneration.status();
-                  if (!recheckStatus.isRunning) {
-                    console.log("[SpecView] Re-check after visibility: Still not running - clearing state");
-                    setIsCreating(false);
-                    setIsRegenerating(false);
-                    setIsGeneratingFeatures(false);
-                    setCurrentPhase("");
-                    stateRestoredRef.current = false;
-                    loadSpec();
-                  }
-                }
-              }, STATUS_CHECK_INTERVAL_MS);
-            }
+            // Backend says not running - clear state
+            console.log("[SpecView] Visibility change: Backend indicates generation complete - clearing state");
+            setIsCreating(false);
+            setIsRegenerating(false);
+            setIsGeneratingFeatures(false);
+            setCurrentPhase("");
+            stateRestoredRef.current = false;
+            loadSpec();
+          } else if (status.currentPhase) {
+            // Still running - update phase from backend
+            setCurrentPhase(status.currentPhase);
           }
         } catch (error) {
           console.error("[SpecView] Failed to check status on visibility change:", error);
@@ -268,7 +185,7 @@ export function SpecView() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [currentProject, isCreating, isRegenerating, isGeneratingFeatures, currentPhase, loadSpec]);
+  }, [currentProject, isCreating, isRegenerating, isGeneratingFeatures, loadSpec]);
 
   // Periodic status check to ensure state stays in sync (only when we think we're running)
   useEffect(() => {
@@ -281,40 +198,22 @@ export function SpecView() {
 
         const status = await api.specRegeneration.status();
         
-        // If not running but we think we are, verify we're truly done
-        if (!status.isRunning && (isCreating || isRegenerating || isGeneratingFeatures)) {
-          // Check logs for completion indicators
-          const hasCompletion = logsRef.current.includes("All tasks completed") ||
-                               logsRef.current.includes("[Complete] All tasks completed") ||
-                               logsRef.current.includes("[Phase: complete]") ||
-                               currentPhase === "complete";
-          
-          // Also check if we haven't seen feature activity recently
-          const recentLogs = logsRef.current.slice(-3000); // Last 3000 chars (more context)
-          const hasRecentFeatureActivity = recentLogs.includes("Feature Creation") ||
-                                          recentLogs.includes("Creating feature") ||
-                                          recentLogs.includes("UpdateFeatureStatus") ||
-                                          recentLogs.includes("[Tool]") && recentLogs.includes("UpdateFeatureStatus");
-          
-          // If we're in feature_generation phase and not running, we're likely done
-          // (features are created via tool calls, so when stream ends, they're done)
-          const isFeatureGenComplete = currentPhase === "feature_generation" && 
-                                       !hasRecentFeatureActivity;
-          
-          if (hasCompletion || isFeatureGenComplete) {
-            console.log("[SpecView] Periodic check: Generation complete - clearing state", {
-              hasCompletion,
-              hasRecentFeatureActivity,
-              currentPhase,
-              isFeatureGenComplete
-            });
-            setIsCreating(false);
-            setIsRegenerating(false);
-            setIsGeneratingFeatures(false);
-            setCurrentPhase("");
-            stateRestoredRef.current = false;
-            loadSpec();
-          }
+        if (!status.isRunning) {
+          // Backend says not running - clear state
+          console.log("[SpecView] Periodic check: Backend indicates generation complete - clearing state");
+          setIsCreating(false);
+          setIsRegenerating(false);
+          setIsGeneratingFeatures(false);
+          setCurrentPhase("");
+          stateRestoredRef.current = false;
+          loadSpec();
+        } else if (status.currentPhase && status.currentPhase !== currentPhase) {
+          // Still running but phase changed - update from backend
+          console.log("[SpecView] Periodic check: Phase updated from backend", { 
+            old: currentPhase, 
+            new: status.currentPhase 
+          });
+          setCurrentPhase(status.currentPhase);
         }
       } catch (error) {
         console.error("[SpecView] Periodic status check error:", error);

@@ -382,13 +382,15 @@ class FeatureLoader {
    * @param {string} featureId - The ID of the feature to update
    * @param {string} status - The new status
    * @param {string} projectPath - Path to the project
-   * @param {string} [summary] - Optional summary of what was done
-   * @param {string} [error] - Optional error message if feature errored
-   * @param {string} [description] - Optional detailed description
-   * @param {string} [category] - Optional category/phase
-   * @param {string[]} [steps] - Optional array of implementation steps
+   * @param {Object} options - Options object for optional parameters
+   * @param {string} [options.summary] - Optional summary of what was done
+   * @param {string} [options.error] - Optional error message if feature errored
+   * @param {string} [options.description] - Optional detailed description
+   * @param {string} [options.category] - Optional category/phase
+   * @param {string[]} [options.steps] - Optional array of implementation steps
    */
-  async updateFeatureStatus(featureId, status, projectPath, summary, error, description, category, steps) {
+  async updateFeatureStatus(featureId, status, projectPath, options = {}) {
+    const { summary, error, description, category, steps } = options;
     // Check if feature exists
     const existingFeature = await this.get(projectPath, featureId);
     
