@@ -107,7 +107,7 @@
           ]
         }
       ],
-      "icon": "public/logo.png"
+      "icon": "public/logo_larger.png"
     },
     "win": {
       "target": [
@@ -118,7 +118,7 @@
           ]
         }
       ],
-      "icon": "public/logo.png"
+      "icon": "public/logo_larger.png"
     },
     "linux": {
       "target": [
@@ -136,7 +136,7 @@
         }
       ],
       "category": "Development",
-      "icon": "public/logo.png",
+      "icon": "public/logo_larger.png",
       "maintainer": "webdevcody@gmail.com"
     },
     "nsis": {
