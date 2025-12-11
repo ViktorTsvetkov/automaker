@@ -63,7 +63,7 @@ Automaker supports multiple authentication methods (in order of priority):
 Add to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-your-token-here"
+export CLAUDE_CODE_OAUTH_TOKEN="YOUR_TOKEN_HERE"
 ```
 
 Then restart your terminal or run `source ~/.bashrc`.
