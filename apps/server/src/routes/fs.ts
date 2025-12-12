@@ -7,6 +7,7 @@ import { Router, type Request, type Response } from "express";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+import os from "os";
 import { validatePath, addAllowedPath, isPathAllowed } from "../lib/security.js";
 import type { EventEmitter } from "../lib/events.js";
 
@@ -365,6 +366,82 @@ export function createFsRoutes(_events: EventEmitter): Router {
       addAllowedPath(projectPath);
 
       res.json({ success: true, path: filePath });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  // Browse directories - for file browser UI
+  router.post("/browse", async (req: Request, res: Response) => {
+    try {
+      const { dirPath } = req.body as { dirPath?: string };
+
+      // Default to home directory if no path provided
+      const targetPath = dirPath ? path.resolve(dirPath) : os.homedir();
+
+      // Detect available drives on Windows
+      const detectDrives = async (): Promise<string[]> => {
+        if (os.platform() !== "win32") {
+          return [];
+        }
+
+        const drives: string[] = [];
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        for (const letter of letters) {
+          const drivePath = `${letter}:\\`;
+          try {
+            await fs.access(drivePath);
+            drives.push(drivePath);
+          } catch {
+            // Drive doesn't exist, skip it
+          }
+        }
+
+        return drives;
+      };
+
+      try {
+        const stats = await fs.stat(targetPath);
+
+        if (!stats.isDirectory()) {
+          res.status(400).json({ success: false, error: "Path is not a directory" });
+          return;
+        }
+
+        // Read directory contents
+        const entries = await fs.readdir(targetPath, { withFileTypes: true });
+
+        // Filter for directories only and add parent directory option
+        const directories = entries
+          .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+          .map((entry) => ({
+            name: entry.name,
+            path: path.join(targetPath, entry.name),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        // Get parent directory
+        const parentPath = path.dirname(targetPath);
+        const hasParent = parentPath !== targetPath;
+
+        // Get available drives
+        const drives = await detectDrives();
+
+        res.json({
+          success: true,
+          currentPath: targetPath,
+          parentPath: hasParent ? parentPath : null,
+          directories,
+          drives,
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to read directory",
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json({ success: false, error: message });

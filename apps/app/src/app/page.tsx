@@ -15,8 +15,9 @@ import { RunningAgentsView } from "@/components/views/running-agents-view";
 import { useAppStore } from "@/store/app-store";
 import { useSetupStore } from "@/store/setup-store";
 import { getElectronAPI, isElectron } from "@/lib/electron";
+import { FileBrowserProvider, useFileBrowser, setGlobalFileBrowser } from "@/contexts/file-browser-context";
 
-export default function Home() {
+function HomeContent() {
   const {
     currentView,
     setCurrentView,
@@ -27,6 +28,7 @@ export default function Home() {
   const { isFirstRun, setupComplete } = useSetupStore();
   const [isMounted, setIsMounted] = useState(false);
   const [streamerPanelOpen, setStreamerPanelOpen] = useState(false);
+  const { openFileBrowser } = useFileBrowser();
 
   // Hidden streamer panel - opens with "\" key
   const handleStreamerPanelShortcut = useCallback((event: KeyboardEvent) => {
@@ -78,6 +80,11 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Initialize global file browser for HttpApiClient
+  useEffect(() => {
+    setGlobalFileBrowser(openFileBrowser);
+  }, [openFileBrowser]);
 
   // Check if this is first run and redirect to setup if needed
   useEffect(() => {
@@ -234,5 +241,13 @@ export default function Home() {
         }`}
       />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <FileBrowserProvider>
+      <HomeContent />
+    </FileBrowserProvider>
   );
 }

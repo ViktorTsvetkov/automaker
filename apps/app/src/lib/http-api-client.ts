@@ -31,7 +31,7 @@ import type {
   ModelDefinition,
   ProviderStatus,
 } from "@/types/electron";
-import { openDirectoryPicker, openFilePicker, type DirectoryPickerResult } from "./file-picker";
+import { getGlobalFileBrowser } from "@/contexts/file-browser-context";
 
 
 // Server URL - configurable via environment variable
@@ -202,96 +202,62 @@ export class HttpApiClient implements ElectronAPI {
     return { success: true };
   }
 
-  // File picker - uses web-based file picker (works on Windows)
+  // File picker - uses server-side file browser dialog
   async openDirectory(): Promise<DialogResult> {
-    try {
-      console.log("[HttpApiClient] Opening directory picker...");
-      const directoryInfo = await openDirectoryPicker();
-      console.log("[HttpApiClient] Directory info:", directoryInfo);
-      
-      if (!directoryInfo) {
-        console.log("[HttpApiClient] No directory selected (user canceled)");
-        return { canceled: true, filePaths: [] };
-      }
+    const fileBrowser = getGlobalFileBrowser();
 
-      // Try to resolve directory path using server endpoint
-      // First, try if we have an absolute path (from file.path property)
-      if (directoryInfo.directoryName && (directoryInfo.directoryName.includes("\\") || directoryInfo.directoryName.includes("/") || directoryInfo.directoryName.startsWith("/"))) {
-        // Looks like an absolute path, try validating it directly
-        console.log("[HttpApiClient] Attempting direct path validation:", directoryInfo.directoryName);
-        const directResult = await this.post<{
-          success: boolean;
-          path?: string;
-          error?: string;
-        }>("/api/fs/validate-path", { filePath: directoryInfo.directoryName });
-
-        if (directResult.success && directResult.path) {
-          console.log("[HttpApiClient] Direct path validation succeeded:", directResult.path);
-          return { canceled: false, filePaths: [directResult.path] };
-        }
-      }
-
-      // If direct validation failed or we only have a directory name,
-      // use the resolve endpoint with directory structure
-      console.log("[HttpApiClient] Resolving directory using structure info...");
-      const result = await this.post<{
-        success: boolean;
-        path?: string;
-        error?: string;
-      }>("/api/fs/resolve-directory", {
-        directoryName: directoryInfo.directoryName,
-        sampleFiles: directoryInfo.sampleFiles,
-        fileCount: directoryInfo.fileCount,
-      });
-
-      console.log("[HttpApiClient] Directory resolution result:", result);
-
-      if (result.success && result.path) {
-        console.log("[HttpApiClient] Directory resolved successfully:", result.path);
-        return { canceled: false, filePaths: [result.path] };
-      }
-
-      // If resolution failed, show error
-      console.warn("[HttpApiClient] Directory resolution failed:", result.error);
-      const errorMsg = result.error || "Could not locate directory. Please ensure the directory exists and try selecting it again.";
-      alert(errorMsg);
-      return { canceled: true, filePaths: [] };
-    } catch (error) {
-      console.error("[HttpApiClient] Failed to open directory picker:", error);
-      alert("Failed to open directory picker. Please try again.");
+    if (!fileBrowser) {
+      console.error("File browser not initialized");
       return { canceled: true, filePaths: [] };
     }
+
+    const path = await fileBrowser();
+
+    if (!path) {
+      return { canceled: true, filePaths: [] };
+    }
+
+    // Validate with server
+    const result = await this.post<{
+      success: boolean;
+      path?: string;
+      error?: string;
+    }>("/api/fs/validate-path", { filePath: path });
+
+    if (result.success && result.path) {
+      return { canceled: false, filePaths: [result.path] };
+    }
+
+    console.error("Invalid directory:", result.error);
+    return { canceled: true, filePaths: [] };
   }
 
   async openFile(options?: object): Promise<DialogResult> {
-    try {
-      const selectedPath = await openFilePicker(options);
-      if (!selectedPath) {
-        return { canceled: true, filePaths: [] };
-      }
+    const fileBrowser = getGlobalFileBrowser();
 
-      // Handle both single file and multiple files
-      const filePaths = Array.isArray(selectedPath) ? selectedPath : [selectedPath];
-
-      // Validate files exist with server
-      // For multiple files, check the first one as a validation step
-      const firstPath = filePaths[0];
-      const result = await this.post<{ success: boolean; exists: boolean }>(
-        "/api/fs/exists",
-        { filePath: firstPath }
-      );
-
-      if (result.success && result.exists) {
-        return { canceled: false, filePaths };
-      }
-
-      alert("File does not exist or cannot be accessed.");
-      return { canceled: true, filePaths: [] };
-    } catch (error) {
-      console.error("[HttpApiClient] Failed to open file picker:", error);
-      alert("Failed to open file picker. Please try again.");
+    if (!fileBrowser) {
+      console.error("File browser not initialized");
       return { canceled: true, filePaths: [] };
     }
+
+    // For now, use the same directory browser (could be enhanced for file selection)
+    const path = await fileBrowser();
+
+    if (!path) {
+      return { canceled: true, filePaths: [] };
+    }
+
+    const result = await this.post<{ success: boolean; exists: boolean }>(
+      "/api/fs/exists",
+      { filePath: path }
+    );
+
+    if (result.success && result.exists) {
+      return { canceled: false, filePaths: [path] };
+    }
+
+    console.error("File not found");
+    return { canceled: true, filePaths: [] };
   }
 
   // File system operations
