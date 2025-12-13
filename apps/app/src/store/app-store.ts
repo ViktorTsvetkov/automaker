@@ -203,6 +203,7 @@ export interface FeatureImagePath {
 export type ClaudeModel = "opus" | "sonnet" | "haiku";
 // OpenAI/Codex models
 export type OpenAIModel =
+  | "gpt-5.2"
   | "gpt-5.1-codex-max"
   | "gpt-5.1-codex"
   | "gpt-5.1-codex-mini"
@@ -445,6 +446,7 @@ export interface AppActions {
   updateAIProfile: (id: string, updates: Partial<AIProfile>) => void;
   removeAIProfile: (id: string) => void;
   reorderAIProfiles: (oldIndex: number, newIndex: number) => void;
+  resetAIProfiles: () => void;
 
   // Project Analysis actions
   setProjectAnalysis: (analysis: ProjectAnalysis | null) => void;
@@ -490,6 +492,16 @@ const DEFAULT_AI_PROFILES: AIProfile[] = [
     provider: "claude",
     isBuiltIn: true,
     icon: "Zap",
+  },
+  {
+    id: "profile-gpt52",
+    name: "GPT-5.2",
+    description: "GPT-5.2 - Latest OpenAI model for advanced coding tasks.",
+    model: "gpt-5.2",
+    thinkingLevel: "none",
+    provider: "codex",
+    isBuiltIn: true,
+    icon: "Sparkles",
   },
   {
     id: "profile-codex-power",
@@ -1104,6 +1116,14 @@ export const useAppStore = create<AppState & AppActions>()(
         const [movedProfile] = profiles.splice(oldIndex, 1);
         profiles.splice(newIndex, 0, movedProfile);
         set({ aiProfiles: profiles });
+      },
+
+      resetAIProfiles: () => {
+        // Merge: keep user-created profiles, but refresh all built-in profiles to latest defaults
+        const currentProfiles = get().aiProfiles;
+        const userProfiles = currentProfiles.filter((p) => !p.isBuiltIn);
+        const mergedProfiles = [...DEFAULT_AI_PROFILES, ...userProfiles];
+        set({ aiProfiles: mergedProfiles });
       },
 
       // Project Analysis actions

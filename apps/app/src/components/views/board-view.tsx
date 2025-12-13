@@ -147,6 +147,13 @@ const CLAUDE_MODELS: ModelOption[] = [
 
 const CODEX_MODELS: ModelOption[] = [
   {
+    id: "gpt-5.2",
+    label: "GPT-5.2",
+    description: "Latest OpenAI model with advanced coding capabilities.",
+    badge: "Latest",
+    provider: "codex",
+  },
+  {
     id: "gpt-5.1-codex-max",
     label: "GPT-5.1 Codex Max",
     description: "Flagship Codex model tuned for deep coding tasks.",

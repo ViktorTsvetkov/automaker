@@ -282,21 +282,21 @@ export function CodexSetupStep({
               <Key className="w-5 h-5" />
               Authentication
             </CardTitle>
-            <CardDescription>Codex requires an OpenAI API key</CardDescription>
+            <CardDescription>Codex requires authentication via ChatGPT account or API key</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {codexCliStatus?.installed && (
               <div className="p-4 rounded-lg bg-muted/50 border border-border">
                 <div className="flex items-start gap-3">
                   <Terminal className="w-5 h-5 text-green-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-foreground">
-                      Authenticate via CLI
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground mb-2">
+                      Authenticate via CLI (Recommended)
                     </p>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Run this command in your terminal:
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Run the following command in your terminal to login with your ChatGPT account:
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-3">
                       <code className="bg-muted px-3 py-1 rounded text-sm font-mono text-foreground">
                         codex auth login
                       </code>
@@ -304,6 +304,21 @@ export function CodexSetupStep({
                         variant="ghost"
                         size="icon"
                         onClick={() => copyCommand("codex auth login")}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      After logging in, you can verify your authentication status:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-3 py-1 rounded text-sm font-mono text-foreground">
+                        codex login status
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyCommand("codex login status")}
                       >
                         <Copy className="w-4 h-4" />
                       </Button>

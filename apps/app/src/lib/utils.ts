@@ -12,6 +12,7 @@ export function cn(...inputs: ClassValue[]) {
 export function isCodexModel(model?: AgentModel | string): boolean {
   if (!model) return false;
   const codexModels: string[] = [
+    "gpt-5.2",
     "gpt-5.1-codex-max",
     "gpt-5.1-codex",
     "gpt-5.1-codex-mini",
@@ -36,6 +37,7 @@ export function getModelDisplayName(model: AgentModel | string): string {
     haiku: "Claude Haiku",
     sonnet: "Claude Sonnet",
     opus: "Claude Opus",
+    "gpt-5.2": "GPT-5.2",
     "gpt-5.1-codex-max": "GPT-5.1 Codex Max",
     "gpt-5.1-codex": "GPT-5.1 Codex",
     "gpt-5.1-codex-mini": "GPT-5.1 Codex Mini",

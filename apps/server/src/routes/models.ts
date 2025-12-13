@@ -90,6 +90,15 @@ export function createModelsRoutes(): Router {
           supportsVision: true,
           supportsTools: false,
         },
+        {
+          id: "gpt-5.2",
+          name: "GPT-5.2 (Codex)",
+          provider: "openai",
+          contextWindow: 256000,
+          maxOutputTokens: 32768,
+          supportsVision: true,
+          supportsTools: true,
+        },
       ];
 
       res.json({ success: true, models });

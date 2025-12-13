@@ -18,6 +18,13 @@ import type { EventEmitter, EventType } from "../lib/events.js";
 
 const execAsync = promisify(exec);
 
+// Model name mappings for Claude (matching electron version)
+const MODEL_MAP: Record<string, string> = {
+  haiku: "claude-haiku-4-5",
+  sonnet: "claude-sonnet-4-20250514",
+  opus: "claude-opus-4-5-20251101",
+};
+
 interface Feature {
   id: string;
   title: string;
@@ -25,6 +32,37 @@ interface Feature {
   status: string;
   priority?: number;
   spec?: string;
+  model?: string; // Model to use for this feature
+}
+
+/**
+ * Get model string from feature's model property
+ * Supports model keys like "opus", "sonnet", "haiku" or full model strings
+ * Also supports OpenAI/Codex models like "gpt-5.2", "gpt-5.1-codex", etc.
+ */
+function getModelString(feature: Feature): string {
+  const modelKey = feature.model || "opus"; // Default to opus
+  
+  // Check if it's an OpenAI/Codex model (starts with "gpt-" or "o" for O-series)
+  if (modelKey.startsWith("gpt-") || modelKey.startsWith("o")) {
+    console.log(`[AutoMode] Using OpenAI/Codex model from feature ${feature.id}: ${modelKey} (passing through)`);
+    return modelKey;
+  }
+  
+  // If it's already a full Claude model string (contains "claude-"), use it directly
+  if (modelKey.includes("claude-")) {
+    console.log(`[AutoMode] Using Claude model from feature ${feature.id}: ${modelKey} (full model string)`);
+    return modelKey;
+  }
+  
+  // Otherwise, look it up in the Claude model map
+  const modelString = MODEL_MAP[modelKey] || MODEL_MAP.opus;
+  if (modelString !== MODEL_MAP.opus || modelKey === "opus") {
+    console.log(`[AutoMode] Resolved Claude model for feature ${feature.id}: "${modelKey}" -> "${modelString}"`);
+  } else {
+    console.warn(`[AutoMode] Unknown model key "${modelKey}" for feature ${feature.id}, defaulting to "${modelString}"`);
+  }
+  return modelString;
 }
 
 interface RunningFeature {
@@ -199,8 +237,12 @@ export class AutoModeService {
       // Build the prompt
       const prompt = this.buildFeaturePrompt(feature);
 
-      // Run the agent
-      await this.runAgent(workDir, featureId, prompt, abortController);
+      // Get model from feature
+      const model = getModelString(feature);
+      console.log(`[AutoMode] Executing feature ${featureId} with model: ${model}`);
+
+      // Run the agent with the feature's model
+      await this.runAgent(workDir, featureId, prompt, abortController, undefined, model);
 
       // Mark as waiting_approval for user review
       await this.updateFeatureStatus(projectPath, featureId, "waiting_approval");
@@ -330,7 +372,12 @@ export class AutoModeService {
     });
 
     try {
-      await this.runAgent(workDir, featureId, prompt, abortController, imagePaths);
+      // Load feature to get its model
+      const feature = await this.loadFeature(projectPath, featureId);
+      const model = feature ? getModelString(feature) : MODEL_MAP.opus;
+      console.log(`[AutoMode] Follow-up for feature ${featureId} using model: ${model}`);
+
+      await this.runAgent(workDir, featureId, prompt, abortController, imagePaths, model);
 
       this.emitAutoModeEvent("auto_mode_feature_complete", {
         featureId,
@@ -709,10 +756,23 @@ When done, summarize what you implemented and any notes for the developer.`;
     featureId: string,
     prompt: string,
     abortController: AbortController,
-    imagePaths?: string[]
+    imagePaths?: string[],
+    model?: string
   ): Promise<void> {
+    const finalModel = model || MODEL_MAP.opus;
+    console.log(`[AutoMode] runAgent called for feature ${featureId} with model: ${finalModel}`);
+    
+    // Check if this is an OpenAI/Codex model - Claude Agent SDK doesn't support these
+    if (finalModel.startsWith("gpt-") || finalModel.startsWith("o")) {
+      const errorMessage = `OpenAI/Codex models (like "${finalModel}") are not yet supported in server mode. ` +
+        `Please use a Claude model (opus, sonnet, or haiku) instead. ` +
+        `OpenAI/Codex models are only supported in the Electron app.`;
+      console.error(`[AutoMode] ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+    
     const options: Options = {
-      model: "claude-opus-4-5-20251101",
+      model: finalModel,
       maxTurns: 50,
       cwd: workDir,
       allowedTools: [

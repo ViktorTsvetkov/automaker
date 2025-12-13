@@ -249,56 +249,41 @@ export function createSetupRoutes(): Router {
           const { stdout: versionOut } = await execAsync("codex --version");
           version = versionOut.trim();
         } catch {
-          // Version command might not be available
+          version = "unknown";
         }
       } catch {
         // Not found
       }
 
       // Check for OpenAI/Codex authentication
+      // Simplified: only check via CLI command, no file parsing
       let auth = {
         authenticated: false,
         method: "none" as string,
-        hasAuthFile: false,
         hasEnvKey: !!process.env.OPENAI_API_KEY,
         hasStoredApiKey: !!apiKeys.openai,
-        hasEnvApiKey: !!process.env.OPENAI_API_KEY,
-        // Additional fields for subscription/account detection
-        hasSubscription: false,
-        cliLoggedIn: false,
       };
 
-      // Check for OpenAI CLI auth file (~/.codex/auth.json or similar)
-      const codexAuthPaths = [
-        path.join(os.homedir(), ".codex", "auth.json"),
-        path.join(os.homedir(), ".openai", "credentials"),
-        path.join(os.homedir(), ".config", "openai", "credentials.json"),
-      ];
-
-      for (const authPath of codexAuthPaths) {
+      // Try to verify authentication using codex CLI command if CLI is installed
+      if (installed && cliPath) {
         try {
-          const authContent = await fs.readFile(authPath, "utf-8");
-          const authData = JSON.parse(authContent);
-          auth.hasAuthFile = true;
+          const { stdout: statusOutput } = await execAsync(`"${cliPath}" login status 2>&1`, {
+            timeout: 5000,
+          });
 
-          // Check for subscription/tokens
-          if (authData.subscription || authData.plan || authData.account_type) {
-            auth.hasSubscription = true;
+          // Check if the output indicates logged in status
+          if (statusOutput && (statusOutput.includes('Logged in') || statusOutput.includes('Authenticated'))) {
             auth.authenticated = true;
-            auth.method = "subscription"; // Codex subscription (Plus/Team)
-          } else if (authData.access_token || authData.api_key) {
-            auth.cliLoggedIn = true;
-            auth.authenticated = true;
-            auth.method = "cli_verified"; // CLI logged in with account
+            auth.method = "cli_verified"; // CLI verified via login status command
           }
-          break;
-        } catch {
-          // Auth file not found at this path
+        } catch (error) {
+          // CLI check failed - user needs to login manually
+          console.log("[Setup] Codex login status check failed:", error);
         }
       }
 
-      // Environment variable has highest priority
-      if (auth.hasEnvApiKey) {
+      // Environment variable override
+      if (process.env.OPENAI_API_KEY) {
         auth.authenticated = true;
         auth.method = "env"; // OPENAI_API_KEY environment variable
       }

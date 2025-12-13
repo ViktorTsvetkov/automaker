@@ -41,6 +41,7 @@ import {
   GripVertical,
   Lock,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -89,6 +90,7 @@ const CLAUDE_MODELS: { id: AgentModel; label: string }[] = [
 ];
 
 const CODEX_MODELS: { id: AgentModel; label: string }[] = [
+  { id: "gpt-5.2", label: "GPT-5.2" },
   { id: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
   { id: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
   { id: "gpt-5.1-codex-mini", label: "GPT-5.1 Codex Mini" },
@@ -461,6 +463,7 @@ export function ProfilesView() {
     updateAIProfile,
     removeAIProfile,
     reorderAIProfiles,
+    resetAIProfiles,
   } = useAppStore();
   const shortcuts = useKeyboardShortcutsConfig();
 
@@ -529,6 +532,13 @@ export function ProfilesView() {
     });
   };
 
+  const handleResetProfiles = () => {
+    resetAIProfiles();
+    toast.success("Profiles refreshed", {
+      description: "Default profiles have been updated to the latest version",
+    });
+  };
+
   // Build keyboard shortcuts for profiles view
   const profilesShortcuts: KeyboardShortcut[] = useMemo(() => {
     const shortcutsList: KeyboardShortcut[] = [];
@@ -568,15 +578,26 @@ export function ProfilesView() {
                 </p>
               </div>
             </div>
-            <HotkeyButton
-              onClick={() => setShowAddDialog(true)}
-              hotkey={shortcuts.addProfile}
-              hotkeyActive={false}
-              data-testid="add-profile-button"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Profile
-            </HotkeyButton>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleResetProfiles}
+                data-testid="refresh-profiles-button"
+                className="gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh Defaults
+              </Button>
+              <HotkeyButton
+                onClick={() => setShowAddDialog(true)}
+                hotkey={shortcuts.addProfile}
+                hotkeyActive={false}
+                data-testid="add-profile-button"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Profile
+              </HotkeyButton>
+            </div>
           </div>
         </div>
       </div>
