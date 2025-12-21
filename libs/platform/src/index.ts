@@ -44,3 +44,11 @@ export {
 
 // Secure file system (validates paths before I/O operations)
 export * as secureFs from './secure-fs.js';
+
+// Node.js executable finder (cross-platform)
+export {
+  findNodeExecutable,
+  buildEnhancedPath,
+  type NodeFinderResult,
+  type NodeFinderOptions,
+} from './node-finder.js';
