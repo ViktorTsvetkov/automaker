@@ -25,6 +25,7 @@
     "@automaker/git-utils": "^1.0.0",
     "@automaker/model-resolver": "^1.0.0",
     "@automaker/platform": "^1.0.0",
+    "@automaker/prompts": "^1.0.0",
     "@automaker/types": "^1.0.0",
     "@automaker/utils": "^1.0.0",
     "cors": "^2.8.5",

@@ -2,6 +2,8 @@
  * Feature types for AutoMaker feature management
  */
 
+import type { PlanningMode } from './settings.js';
+
 export interface FeatureImagePath {
   id: string;
   path: string;
@@ -28,7 +30,7 @@ export interface Feature {
   branchName?: string; // Name of the feature branch (undefined = use current worktree)
   skipTests?: boolean;
   thinkingLevel?: string;
-  planningMode?: 'skip' | 'lite' | 'spec' | 'full';
+  planningMode?: PlanningMode;
   requirePlanApproval?: boolean;
   planSpec?: {
     status: 'pending' | 'generating' | 'generated' | 'approved' | 'rejected';
@@ -47,4 +49,3 @@ export interface Feature {
 }
 
 export type FeatureStatus = 'pending' | 'running' | 'completed' | 'failed' | 'verified';
-export type PlanningMode = 'skip' | 'lite' | 'spec' | 'full';

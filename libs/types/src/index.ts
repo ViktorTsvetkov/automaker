@@ -20,7 +20,6 @@ export type {
   Feature,
   FeatureImagePath,
   FeatureStatus,
-  PlanningMode,
 } from './feature.js';
 
 // Session types
@@ -48,6 +47,7 @@ export {
   CLAUDE_MODEL_MAP,
   DEFAULT_MODELS,
   type ModelAlias,
+  type AgentModel,
 } from './model.js';
 
 // Event types
@@ -69,3 +69,43 @@ export type {
   EnhancementMode,
   EnhancementExample,
 } from './enhancement.js';
+
+// Settings types and constants
+export type {
+  ThemeMode,
+  KanbanCardDetailLevel,
+  PlanningMode,
+  ThinkingLevel,
+  ModelProvider,
+  KeyboardShortcuts,
+  AIProfile,
+  ProjectRef,
+  TrashedProjectRef,
+  ChatSessionRef,
+  GlobalSettings,
+  Credentials,
+  BoardBackgroundSettings,
+  WorktreeInfo,
+  ProjectSettings,
+} from './settings.js';
+export {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  DEFAULT_GLOBAL_SETTINGS,
+  DEFAULT_CREDENTIALS,
+  DEFAULT_PROJECT_SETTINGS,
+  SETTINGS_VERSION,
+  CREDENTIALS_VERSION,
+  PROJECT_SETTINGS_VERSION,
+} from './settings.js';
+
+// Model display constants
+export type {
+  ModelOption,
+  ThinkingLevelOption,
+} from './model-display.js';
+export {
+  CLAUDE_MODELS,
+  THINKING_LEVELS,
+  THINKING_LEVEL_LABELS,
+  getModelDisplayName,
+} from './model-display.js';

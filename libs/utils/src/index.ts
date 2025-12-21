@@ -10,6 +10,7 @@ export {
   isAuthenticationError,
   classifyError,
   getUserFriendlyErrorMessage,
+  getErrorMessage,
 } from './error-handler.js';
 
 // Conversation utilities
@@ -48,3 +49,9 @@ export {
   mkdirSafe,
   existsSafe,
 } from './fs-utils.js';
+
+// Path utilities
+export {
+  normalizePath,
+  pathsEqual,
+} from './path-utils.js';

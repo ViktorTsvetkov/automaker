@@ -10,6 +10,7 @@ AutoMaker uses a monorepo structure with shared packages in `libs/`:
 libs/
 ├── types/              # Type definitions (no dependencies)
 ├── utils/              # Utility functions
+├── prompts/            # AI prompt templates
 ├── platform/           # Platform utilities
 ├── model-resolver/     # Claude model resolution
 ├── dependency-resolver/# Feature dependency resolution
@@ -53,6 +54,38 @@ import { createLogger, classifyError } from '@automaker/utils';
 ```
 
 **Never import from:** `lib/logger`, `lib/error-handler`, `lib/prompt-builder`, `lib/image-handler`
+
+### @automaker/prompts
+**Use when:** You need AI prompt templates for text enhancement or other AI-powered features.
+
+**Import for:**
+- `getEnhancementPrompt(mode)` - Get complete prompt for enhancement mode
+- `getSystemPrompt(mode)` - Get system prompt for specific mode
+- `getExamples(mode)` - Get few-shot examples for a mode
+- `buildUserPrompt(description, mode)` - Build user prompt with examples
+- `isValidEnhancementMode(mode)` - Check if mode is valid
+- `IMPROVE_SYSTEM_PROMPT` - System prompt for improving vague descriptions
+- `TECHNICAL_SYSTEM_PROMPT` - System prompt for adding technical details
+- `SIMPLIFY_SYSTEM_PROMPT` - System prompt for simplifying verbose text
+- `ACCEPTANCE_SYSTEM_PROMPT` - System prompt for adding acceptance criteria
+
+**Example:**
+```typescript
+import { getEnhancementPrompt, isValidEnhancementMode } from '@automaker/prompts';
+
+if (isValidEnhancementMode('improve')) {
+  const { systemPrompt, userPrompt } = getEnhancementPrompt('improve', description);
+  const result = await callClaude(systemPrompt, userPrompt);
+}
+```
+
+**Never import from:** `lib/enhancement-prompts`
+
+**Enhancement modes:**
+- `improve` - Transform vague requests into clear, actionable tasks
+- `technical` - Add implementation details and technical specifications
+- `simplify` - Make verbose descriptions concise and focused
+- `acceptance` - Add testable acceptance criteria
 
 ### @automaker/platform
 **Use when:** You need to work with AutoMaker's directory structure or spawn processes.
@@ -271,6 +304,9 @@ import { CLAUDE_MODEL_MAP, DEFAULT_MODELS } from '@automaker/types';
 // Import utilities from @automaker/utils
 import { createLogger, classifyError } from '@automaker/utils';
 
+// Import prompts from @automaker/prompts
+import { getEnhancementPrompt, isValidEnhancementMode } from '@automaker/prompts';
+
 // Import platform utils from @automaker/platform
 import { getFeatureDir, ensureAutomakerDir } from '@automaker/platform';
 
@@ -294,6 +330,7 @@ import { createLogger } from '../lib/logger';                   // ❌
 import { resolveModelString } from '../lib/model-resolver';     // ❌
 import { isGitRepo } from '../routes/common';                   // ❌
 import { resolveDependencies } from '../lib/dependency-resolver'; // ❌
+import { getEnhancementPrompt } from '../lib/enhancement-prompts'; // ❌
 
 // DON'T import from old lib/ paths
 import { getFeatureDir } from '../lib/automaker-paths';         // ❌
@@ -310,6 +347,7 @@ When refactoring server code, check:
 - [ ] All `Feature` imports use `@automaker/types`
 - [ ] All `ExecuteOptions` imports use `@automaker/types`
 - [ ] All logger usage uses `@automaker/utils`
+- [ ] All prompt templates use `@automaker/prompts`
 - [ ] All path operations use `@automaker/platform`
 - [ ] All model resolution uses `@automaker/model-resolver`
 - [ ] All dependency checks use `@automaker/dependency-resolver`
@@ -326,6 +364,7 @@ Understanding the dependency chain helps prevent circular dependencies:
 @automaker/types (no dependencies)
     ↓
 @automaker/utils
+@automaker/prompts
 @automaker/platform
 @automaker/model-resolver
 @automaker/dependency-resolver
@@ -352,8 +391,10 @@ npm install  # Installs and links workspace packages
 
 ## Module Format
 
-- **dependency-resolver**: ES modules (`type: "module"`) for Vite compatibility
-- **All others**: CommonJS for Node.js compatibility
+All packages use ES modules (`type: "module"`) with NodeNext module resolution:
+- Requires explicit `.js` extensions in import statements
+- Compatible with both Node.js (server) and Vite (UI)
+- Centralized ESM configuration in `libs/tsconfig.base.json`
 
 ## Testing
 
@@ -372,7 +413,8 @@ import { Feature } from '../../../src/services/feature-loader';
 
 **Quick reference:**
 - Types → `@automaker/types`
-- Logging/Errors → `@automaker/utils`
+- Logging/Errors/Utils → `@automaker/utils`
+- AI Prompts → `@automaker/prompts`
 - Paths/Security → `@automaker/platform`
 - Model Resolution → `@automaker/model-resolver`
 - Dependency Ordering → `@automaker/dependency-resolver`

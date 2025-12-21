@@ -15,3 +15,9 @@ export const DEFAULT_MODELS = {
 } as const;
 
 export type ModelAlias = keyof typeof CLAUDE_MODEL_MAP;
+
+/**
+ * AgentModel - Alias for ModelAlias for backward compatibility
+ * Represents available Claude models: "opus" | "sonnet" | "haiku"
+ */
+export type AgentModel = ModelAlias;
