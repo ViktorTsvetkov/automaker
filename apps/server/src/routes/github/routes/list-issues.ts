@@ -111,8 +111,10 @@ async function fetchLinkedPRs(
 
     try {
       // Use spawn with stdin to avoid shell injection vulnerabilities
+      // --input - reads the JSON request body from stdin
+      const requestBody = JSON.stringify({ query });
       const response = await new Promise<Record<string, unknown>>((resolve, reject) => {
-        const gh = spawn('gh', ['api', 'graphql', '-f', 'query=-'], {
+        const gh = spawn('gh', ['api', 'graphql', '--input', '-'], {
           cwd: projectPath,
           env: execEnv,
         });
@@ -133,7 +135,7 @@ async function fetchLinkedPRs(
           }
         });
 
-        gh.stdin.write(query);
+        gh.stdin.write(requestBody);
         gh.stdin.end();
       });
 
