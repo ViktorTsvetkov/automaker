@@ -71,8 +71,6 @@ export interface ExecuteOptions {
   maxTurns?: number;
   allowedTools?: string[];
   mcpServers?: Record<string, McpServerConfig>;
-  mcpAutoApproveTools?: boolean; // Auto-approve MCP tool calls without permission prompts
-  mcpUnrestrictedTools?: boolean; // Allow unrestricted tools when MCP servers are enabled
   abortController?: AbortController;
   conversationHistory?: ConversationMessage[]; // Previous messages for context
   sdkSessionId?: string; // Claude SDK session ID for resuming conversations

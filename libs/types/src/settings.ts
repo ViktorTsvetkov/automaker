@@ -359,10 +359,6 @@ export interface GlobalSettings {
   // MCP Server Configuration
   /** List of configured MCP servers for agent use */
   mcpServers: MCPServerConfig[];
-  /** Auto-approve MCP tool calls without permission prompts (uses bypassPermissions mode) */
-  mcpAutoApproveTools?: boolean;
-  /** Allow unrestricted tools when MCP servers are enabled (don't filter allowedTools) */
-  mcpUnrestrictedTools?: boolean;
 
   // Prompt Customization
   /** Custom prompts for Auto Mode, Agent Runner, Backlog Planning, and Enhancements */
@@ -535,10 +531,6 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   enableSandboxMode: false,
   skipSandboxWarning: false,
   mcpServers: [],
-  // Default to true for autonomous workflow. Security is enforced when adding servers
-  // via the security warning dialog that explains the risks.
-  mcpAutoApproveTools: true,
-  mcpUnrestrictedTools: true,
 };
 
 /** Default credentials (empty strings - user must provide API keys) */

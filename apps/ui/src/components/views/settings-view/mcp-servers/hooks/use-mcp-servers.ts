@@ -21,16 +21,7 @@ interface PendingServerData {
 }
 
 export function useMCPServers() {
-  const {
-    mcpServers,
-    addMCPServer,
-    updateMCPServer,
-    removeMCPServer,
-    mcpAutoApproveTools,
-    mcpUnrestrictedTools,
-    setMcpAutoApproveTools,
-    setMcpUnrestrictedTools,
-  } = useAppStore();
+  const { mcpServers, addMCPServer, updateMCPServer, removeMCPServer } = useAppStore();
 
   // State
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -938,10 +929,6 @@ export function useMCPServers() {
   return {
     // Store state
     mcpServers,
-    mcpAutoApproveTools,
-    mcpUnrestrictedTools,
-    setMcpAutoApproveTools,
-    setMcpUnrestrictedTools,
 
     // Dialog state
     isAddDialogOpen,

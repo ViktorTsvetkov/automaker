@@ -1,1 +1,34 @@
-npx lint-staged
+#!/usr/bin/env sh
+
+# Try to load nvm if available (optional - works without it too)
+if [ -z "$NVM_DIR" ]; then
+  # Check for Herd's nvm first (macOS with Herd)
+  if [ -s "$HOME/Library/Application Support/Herd/config/nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/Library/Application Support/Herd/config/nvm"
+  # Then check standard nvm location
+  elif [ -s "$HOME/.nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/.nvm"
+  fi
+fi
+
+# Source nvm if found (silently skip if not available)
+[ -n "$NVM_DIR" ] && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 2>/dev/null
+
+# Load node version from .nvmrc if using nvm (silently skip if nvm not available)
+[ -f .nvmrc ] && command -v nvm >/dev/null 2>&1 && nvm use >/dev/null 2>&1
+
+# Ensure common system paths are in PATH (for systems without nvm)
+# This helps find node/npm installed via Homebrew, system packages, etc.
+export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/bin"
+
+# Run lint-staged - works with or without nvm
+# Prefer npx, fallback to npm exec, both work with system-installed Node.js
+if command -v npx >/dev/null 2>&1; then
+  npx lint-staged
+elif command -v npm >/dev/null 2>&1; then
+  npm exec -- lint-staged
+else
+  echo "Error: Neither npx nor npm found in PATH."
+  echo "Please ensure Node.js is installed (via nvm, Homebrew, system package manager, etc.)"
+  exit 1
+fi

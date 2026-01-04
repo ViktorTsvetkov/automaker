@@ -23,7 +23,6 @@ import {
   getEnableSandboxModeSetting,
   filterClaudeMdFromContext,
   getMCPServersFromSettings,
-  getMCPPermissionSettings,
   getPromptCustomization,
 } from '../lib/settings-helpers.js';
 
@@ -235,9 +234,6 @@ export class AgentService {
       // Load MCP servers from settings (global setting only)
       const mcpServers = await getMCPServersFromSettings(this.settingsService, '[AgentService]');
 
-      // Load MCP permission settings (global setting only)
-      const mcpPermissions = await getMCPPermissionSettings(this.settingsService, '[AgentService]');
-
       // Load project context files (CLAUDE.md, CODE_QUALITY.md, etc.)
       const contextResult = await loadContextFiles({
         projectPath: effectiveWorkDir,
@@ -264,8 +260,6 @@ export class AgentService {
         autoLoadClaudeMd,
         enableSandboxMode,
         mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
-        mcpAutoApproveTools: mcpPermissions.mcpAutoApproveTools,
-        mcpUnrestrictedTools: mcpPermissions.mcpUnrestrictedTools,
       });
 
       // Extract model, maxTurns, and allowedTools from SDK options
@@ -290,8 +284,6 @@ export class AgentService {
         sandbox: sdkOptions.sandbox, // Pass sandbox configuration
         sdkSessionId: session.sdkSessionId, // Pass SDK session ID for resuming
         mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined, // Pass MCP servers configuration
-        mcpAutoApproveTools: mcpPermissions.mcpAutoApproveTools, // Pass MCP auto-approve setting
-        mcpUnrestrictedTools: mcpPermissions.mcpUnrestrictedTools, // Pass MCP unrestricted tools setting
       };
 
       // Build prompt content with images

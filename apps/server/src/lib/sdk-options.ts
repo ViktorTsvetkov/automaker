@@ -252,10 +252,14 @@ export function getModelForUseCase(
 
 /**
  * Base options that apply to all SDK calls
+ *
+ * AUTONOMOUS MODE: Always bypass permissions and allow dangerous operations
+ * for fully autonomous operation without user prompts.
  */
 function getBaseOptions(): Partial<Options> {
   return {
-    permissionMode: 'acceptEdits',
+    permissionMode: 'bypassPermissions',
+    allowDangerouslySkipPermissions: true,
   };
 }
 
@@ -276,31 +280,27 @@ interface McpPermissionOptions {
  * Centralizes the logic for determining permission modes and tool restrictions
  * when MCP servers are configured.
  *
+ * AUTONOMOUS MODE: Always bypass permissions for fully autonomous operation.
+ * Always allow unrestricted tools when MCP servers are configured.
+ *
  * @param config - The SDK options config
  * @returns Object with MCP permission settings to spread into final options
  */
 function buildMcpOptions(config: CreateSdkOptionsConfig): McpPermissionOptions {
   const hasMcpServers = config.mcpServers && Object.keys(config.mcpServers).length > 0;
-  // Default to true for autonomous workflow. Security is enforced when adding servers
-  // via the security warning dialog that explains the risks.
-  const mcpAutoApprove = config.mcpAutoApproveTools ?? true;
-  const mcpUnrestricted = config.mcpUnrestrictedTools ?? true;
 
-  // Determine if we should bypass permissions based on settings
-  const shouldBypassPermissions = hasMcpServers && mcpAutoApprove;
-  // Determine if we should restrict tools (only when no MCP or unrestricted is disabled)
-  const shouldRestrictTools = !hasMcpServers || !mcpUnrestricted;
+  // AUTONOMOUS MODE: Always bypass permissions and allow unrestricted tools
+  // Only restrict tools when no MCP servers are configured
+  const shouldRestrictTools = !hasMcpServers;
 
   return {
     shouldRestrictTools,
-    // Only include bypass options when MCP is configured and auto-approve is enabled
-    bypassOptions: shouldBypassPermissions
-      ? {
-          permissionMode: 'bypassPermissions' as const,
-          // Required flag when using bypassPermissions mode
-          allowDangerouslySkipPermissions: true,
-        }
-      : {},
+    // AUTONOMOUS MODE: Always include bypass options (though base options already set this)
+    bypassOptions: {
+      permissionMode: 'bypassPermissions' as const,
+      // Required flag when using bypassPermissions mode
+      allowDangerouslySkipPermissions: true,
+    },
     // Include MCP servers if configured
     mcpServerOptions: config.mcpServers ? { mcpServers: config.mcpServers } : {},
   };
@@ -392,12 +392,6 @@ export interface CreateSdkOptionsConfig {
 
   /** MCP servers to make available to the agent */
   mcpServers?: Record<string, McpServerConfig>;
-
-  /** Auto-approve MCP tool calls without permission prompts */
-  mcpAutoApproveTools?: boolean;
-
-  /** Allow unrestricted tools when MCP servers are enabled */
-  mcpUnrestrictedTools?: boolean;
 }
 
 // Re-export MCP types from @automaker/types for convenience
@@ -426,10 +420,7 @@ export function createSpecGenerationOptions(config: CreateSdkOptionsConfig): Opt
 
   return {
     ...getBaseOptions(),
-    // Override permissionMode - spec generation only needs read-only tools
-    // Using "acceptEdits" can cause Claude to write files to unexpected locations
-    // See: https://github.com/AutoMaker-Org/automaker/issues/149
-    permissionMode: 'default',
+    // AUTONOMOUS MODE: Base options already set bypassPermissions and allowDangerouslySkipPermissions
     model: getModelForUseCase('spec', config.model),
     maxTurns: MAX_TURNS.maximum,
     cwd: config.cwd,
@@ -458,8 +449,7 @@ export function createFeatureGenerationOptions(config: CreateSdkOptionsConfig): 
 
   return {
     ...getBaseOptions(),
-    // Override permissionMode - feature generation only needs read-only tools
-    permissionMode: 'default',
+    // AUTONOMOUS MODE: Base options already set bypassPermissions and allowDangerouslySkipPermissions
     model: getModelForUseCase('features', config.model),
     maxTurns: MAX_TURNS.quick,
     cwd: config.cwd,
