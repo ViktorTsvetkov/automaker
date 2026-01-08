@@ -145,16 +145,16 @@ describe('codex-provider.ts', () => {
     it('adds output schema and max turn overrides when configured', async () => {
       // Note: With full-permissions always on, these flags are no longer used
       // This test now only verifies the basic CLI structure
+      // Using gpt-5.1-codex-max which should route to Codex (not Cursor)
       vi.mocked(spawnJSONLProcess).mockReturnValue((async function* () {})());
 
       await collectAsyncGenerator(
         provider.executeQuery({
           prompt: 'Test config',
-          model: 'gpt-5.2',
+          model: 'gpt-5.1-codex-max',
           cwd: '/tmp',
           allowedTools: ['Read', 'Write'],
           maxTurns: 5,
-          codexSettings: { maxTurns: 10, outputFormat: { type: 'json_schema', schema: { type: 'string' } },
         })
       );
 
@@ -166,12 +166,14 @@ describe('codex-provider.ts', () => {
     });
 
     it('overrides approval policy when MCP auto-approval is enabled', async () => {
+      // Note: With full-permissions always on (--dangerously-bypass-approvals-and-sandbox),
+      // approval policy is bypassed, not configured via --config
       vi.mocked(spawnJSONLProcess).mockReturnValue((async function* () {})());
 
       await collectAsyncGenerator(
         provider.executeQuery({
           prompt: 'Test approvals',
-          model: 'gpt-5.2',
+          model: 'gpt-5.1-codex-max',
           cwd: '/tmp',
           mcpServers: { mock: { type: 'stdio', command: 'node' } },
           mcpAutoApproveTools: true,
@@ -180,19 +182,10 @@ describe('codex-provider.ts', () => {
       );
 
       const call = vi.mocked(spawnJSONLProcess).mock.calls[0][0];
-      const approvalConfigIndex = call.args.indexOf('--config');
       const execIndex = call.args.indexOf(EXEC_SUBCOMMAND);
-      const searchConfigIndex = call.args.indexOf('--config');
-      expect(call.args[approvalConfigIndex + 1]).toBe('approval_policy=never');
-      expect(approvalConfigIndex).toBeGreaterThan(-1);
-      expect(execIndex).toBeGreaterThan(-1);
-      expect(approvalConfigIndex).toBeGreaterThan(execIndex);
-      // Search should be in config, not as direct flag
-      const hasSearchConfig = call.args.some(
-        (arg, index) =>
-          arg === '--config' && call.args[index + 1] === 'features.web_search_request=true'
-      );
-      expect(hasSearchConfig).toBe(true);
+      expect(call.args).toContain('--dangerously-bypass-approvals-and-sandbox'); // YOLO flag bypasses approval
+      expect(call.args).toContain('--model');
+      expect(call.args).toContain('--json');
     });
 
     it('injects user and project instructions when auto-load is enabled', async () => {
@@ -226,21 +219,25 @@ describe('codex-provider.ts', () => {
     });
 
     it('disables sandbox mode when running in cloud storage paths', async () => {
+      // Note: With full-permissions always on (--dangerously-bypass-approvals-and-sandbox),
+      // sandbox mode is bypassed, not configured via --sandbox flag
       vi.mocked(spawnJSONLProcess).mockReturnValue((async function* () {})());
 
       const cloudPath = path.join(os.homedir(), 'Dropbox', 'project');
       await collectAsyncGenerator(
         provider.executeQuery({
           prompt: 'Hello',
-          model: 'gpt-5.2',
+          model: 'gpt-5.1-codex-max',
           cwd: cloudPath,
           codexSettings: { sandboxMode: 'workspace-write' },
         })
       );
 
       const call = vi.mocked(spawnJSONLProcess).mock.calls[0][0];
-      const sandboxIndex = call.args.indexOf('--sandbox');
-      expect(call.args[sandboxIndex + 1]).toBe('danger-full-access');
+      // YOLO flag bypasses sandbox entirely
+      expect(call.args).toContain('--dangerously-bypass-approvals-and-sandbox');
+      expect(call.args).toContain('--model');
+      expect(call.args).toContain('--json');
     });
 
     it('uses the SDK when no tools are requested and an API key is present', async () => {

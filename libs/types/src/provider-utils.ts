@@ -21,7 +21,7 @@ export const PROVIDER_PREFIXES = {
  * Check if a model string represents a Cursor model
  *
  * @param model - Model string to check (e.g., "cursor-composer-1" or "composer-1")
- * @returns true if the model is a Cursor model
+ * @returns true if the model is a Cursor model (excluding Codex-specific models)
  */
 export function isCursorModel(model: string | undefined | null): boolean {
   if (!model || typeof model !== 'string') return false;
@@ -31,8 +31,18 @@ export function isCursorModel(model: string | undefined | null): boolean {
     return true;
   }
 
-  // Check if it's a bare Cursor model ID
-  return model in CURSOR_MODEL_MAP;
+  // Check if it's a bare Cursor model ID (excluding Codex-specific models)
+  // Codex-specific models like gpt-5.1-codex-* should go to Codex, not Cursor
+  if (model in CURSOR_MODEL_MAP) {
+    // Exclude Codex-specific model IDs that are in Cursor's model map
+    // These models should be routed to Codex provider instead
+    if (model.startsWith('gpt-5.1-codex-') || model.startsWith('gpt-5.2-codex-')) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
 }
 
 /**
