@@ -503,14 +503,14 @@ export function BoardView() {
 
       try {
         // Determine final branch name based on work mode:
-        // - 'current': No branch name, work on current branch (no worktree)
+        // - 'current': Empty string to clear branch assignment (work on main/current branch)
         // - 'auto': Auto-generate branch name based on current branch
         // - 'custom': Use the provided branch name
         let finalBranchName: string | undefined;
 
         if (workMode === 'current') {
-          // No worktree isolation - work directly on current branch
-          finalBranchName = undefined;
+          // Empty string clears the branch assignment, moving features to main/current branch
+          finalBranchName = '';
         } else if (workMode === 'auto') {
           // Auto-generate a branch name based on current branch and timestamp
           const baseBranch =
