@@ -166,6 +166,7 @@ export function PhaseModelSelector({
     codexModelsLoading,
     fetchCodexModels,
     dynamicOpencodeModels,
+    enabledDynamicModelIds,
     opencodeModelsLoading,
     fetchOpencodeModels,
     disabledProviders,
@@ -383,13 +384,16 @@ export function PhaseModelSelector({
     const staticModels = [...OPENCODE_MODELS];
 
     // Add dynamic models (convert ModelDefinition to ModelOption)
-    const dynamicModelOptions: ModelOption[] = dynamicOpencodeModels.map((model) => ({
-      id: model.id,
-      label: model.name,
-      description: model.description,
-      badge: model.tier === 'premium' ? 'Premium' : model.tier === 'basic' ? 'Free' : undefined,
-      provider: 'opencode' as const,
-    }));
+    // Only include dynamic models that are enabled by the user
+    const dynamicModelOptions: ModelOption[] = dynamicOpencodeModels
+      .filter((model) => enabledDynamicModelIds.includes(model.id))
+      .map((model) => ({
+        id: model.id,
+        label: model.name,
+        description: model.description,
+        badge: model.tier === 'premium' ? 'Premium' : model.tier === 'basic' ? 'Free' : undefined,
+        provider: 'opencode' as const,
+      }));
 
     // Merge, avoiding duplicates (static models take precedence for same ID)
     // In practice, static and dynamic IDs don't overlap
@@ -397,7 +401,7 @@ export function PhaseModelSelector({
     const uniqueDynamic = dynamicModelOptions.filter((m) => !staticIds.has(m.id));
 
     return [...staticModels, ...uniqueDynamic];
-  }, [dynamicOpencodeModels]);
+  }, [dynamicOpencodeModels, enabledDynamicModelIds]);
 
   // Group models (filtering out disabled providers)
   const { favorites, claude, cursor, codex, opencode } = useMemo(() => {
